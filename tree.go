@@ -70,7 +70,7 @@ func (s sortableData) Swap(i, j int) {
 	s.data[i],s.data[j] = s.data[j],s.data[i]
 }
 
-func splitContinuousFeature (data [][]float64, labels []float64, feature int, output int) float64 {
+func continuousFeatureMSESplit (data [][]float64, feature int, output int) (splitValue, mse float64) {
 	var (
 		leftStats, rightStats StatAccumulator
 	)
@@ -84,11 +84,11 @@ func splitContinuousFeature (data [][]float64, labels []float64, feature int, ou
 
 	bestError := math.MaxFloat64
 	bestSplitValue := - math.MaxFloat64
-	previousCandidate := - math.MaxFloat64
+	previousSplitCandidate := - math.MaxFloat64
 
 	for _,row := range data {
-		if (row[feature] != previousCandidate) {
-			error := math.Max(leftStats.Variance(), rightStats.Variance())
+		if (row[feature] != previousSplitCandidate) {
+			error := math.Max(rightStats.Variance(), leftStats.Variance())
 			if error < bestError {
 				bestError = error
 				bestSplitValue = row[feature]
@@ -97,26 +97,7 @@ func splitContinuousFeature (data [][]float64, labels []float64, feature int, ou
 		leftStats.Add(row[output])
 		rightStats.Remove(row[output])
 
-		previousCandidate = row[feature]
+		previousSplitCandidate = row[feature]
 	}
-	
-	return bestSplitValue
+	return bestSplitValue, bestError
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
