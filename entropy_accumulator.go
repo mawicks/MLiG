@@ -32,6 +32,10 @@ func (ea *EntropyAccumulator) Remove(category int) {
 	ea.counts[category] -= 1
 }
 
+func (ea *EntropyAccumulator) Count() int {
+	return ea.totalCount
+}
+
 func (ea *EntropyAccumulator) Entropy() float64 {
 	entropy := 0.0
 	for _,count := range ea.counts {

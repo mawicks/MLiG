@@ -34,7 +34,7 @@ type treeNode struct {
 	// In a non-leaf node, value is the splitting value.  Values
 	// greater than or equal to the splitting value belong to the right
 	// subtree.  Others belong to the left subtree.  In a leaf
-	// node value is the assigned label.
+	// node splitValue is the assigned label.
 	splitValue float64
 }
 
@@ -72,9 +72,10 @@ func (s sortableData) Swap(i, j int) {
 
 // Split the data with a continuously valued output variable along the
 // continuously valued feature axis.  Return the feature value for the
-// split, the mean-squared error after the split, and ok if an error
-// reducing split exists.
-func continuousFeatureMSESplit (data [][]float64, feature int, output int) (splitValue, mse float64, ok bool) {
+// split, the left and right mean-squared error after the split, and
+// the size of the left split.  The returned size will be zero if the
+// error cannot be reduced.
+func continuousFeatureMSESplit (data [][]float64, feature int, output int) (splitValue, leftSplitError, rightSplitError float64, leftSplitSize int) {
 	var (
 		leftStats, rightStats StatAccumulator
 	)
@@ -86,17 +87,24 @@ func continuousFeatureMSESplit (data [][]float64, feature int, output int) (spli
 		rightStats.Add(row[output])
 	}
 
-	bestError := rightStats.Variance()
 	splitValue = - math.MaxFloat64
+	bestError := rightStats.Variance()
+	leftSplitError = bestError
+	rightSplitError = bestError
+	leftSplitSize = 0
 	previousSplitCandidate := - math.MaxFloat64
 
 	for i,row := range data {
 		if (i != 0 && row[feature] != previousSplitCandidate) {
-			error := math.Max(rightStats.Variance(), leftStats.Variance())
+			leftError := leftStats.Variance()
+			rightError := rightStats.Variance()
+			error := math.Max(leftError,rightError)
 			if error < bestError {
 				bestError = error
 				splitValue = row[feature]
-				ok = true
+				leftSplitError =  leftError
+				rightSplitError = rightError
+				leftSplitSize = leftStats.Count()
 			}
 		}
 		leftStats.Add(row[output])
@@ -104,40 +112,48 @@ func continuousFeatureMSESplit (data [][]float64, feature int, output int) (spli
 
 		previousSplitCandidate = row[feature]
 	}
-	return splitValue, bestError, ok
+	return
 }
 
 // Split the data with a categorical output variable along the feature
-// axis.  Return the feature value for the split, the entropy after
-// the split, and ok if an entropy reducing split exists.
-func continuousFeatureEntropySplit (data [][]float64, feature int, output int, categoryRange int) (splitValue, entropy float64, ok bool) {
-	leftEntropy := NewEntropyAccumulator(categoryRange)
-	rightEntropy := NewEntropyAccumulator(categoryRange)
+// axis.  Return the feature value for the split, the entropies of the
+// left and right splits, the size of the left split.  The returned
+// size will be zero if the entropy cannot be reduced.
+func continuousFeatureEntropySplit (data [][]float64, feature int, output int, categoryRange int) (splitValue, leftSplitEntropy, rightSplitEntropy float64, leftSplitSize int) {
+	leftEntropyAccumulator := NewEntropyAccumulator(categoryRange)
+	rightEntropyAccumulator := NewEntropyAccumulator(categoryRange)
 
 	s := sortableData{data, feature}
 	sort.Sort(s)
 
 	for _,row := range data {
-		rightEntropy.Add(int(row[output]))
+		rightEntropyAccumulator.Add(int(row[output]))
 	}
 
-	bestEntropy := rightEntropy.Entropy();
 	splitValue = - math.MaxFloat64
+	bestEntropy := rightEntropyAccumulator.Entropy();
+	leftSplitEntropy = bestEntropy
+	rightSplitEntropy = bestEntropy
+	leftSplitSize = 0
 	previousSplitCandidate := - math.MaxFloat64
 
 	for i,row := range data {
 		if (i != 0 && row[feature] != previousSplitCandidate) {
-			entropy := math.Max(rightEntropy.Entropy(), leftEntropy.Entropy())
+			leftEntropy := leftEntropyAccumulator.Entropy()
+			rightEntropy := rightEntropyAccumulator.Entropy()
+			entropy := math.Max(leftEntropy,rightEntropy)
 			if entropy < bestEntropy {
 				bestEntropy = entropy
 				splitValue = row[feature]
-				ok = true
+				leftSplitEntropy = leftEntropy
+				rightSplitEntropy = rightEntropy
+				leftSplitSize = leftEntropyAccumulator.Count()
 			}
 		}
-		leftEntropy.Add(int(row[output]))
-		rightEntropy.Remove(int(row[output]))
+		leftEntropyAccumulator.Add(int(row[output]))
+		rightEntropyAccumulator.Remove(int(row[output]))
 
 		previousSplitCandidate = row[feature]
 	}
-	return splitValue, bestEntropy, ok
+	return
 }

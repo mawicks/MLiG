@@ -25,6 +25,10 @@ func (sa *StatAccumulator) Remove(x float64) {
 	sa.sumOfSquares -= x*x
 }
 
+func (sa *StatAccumulator) Count() int {
+	return sa.count
+}
+
 func (sa *StatAccumulator) Variance() float64 {
 	n := float64(sa.count)
 	result := 0.0
