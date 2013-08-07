@@ -70,7 +70,11 @@ func (s sortableData) Swap(i, j int) {
 	s.data[i],s.data[j] = s.data[j],s.data[i]
 }
 
-func continuousFeatureMSESplit (data [][]float64, feature int, output int) (splitValue, mse float64) {
+// Split the data with a continuously valued output variable along the
+// continuously valued feature axis.  Return the feature value for the
+// split, the mean-squared error after the split, and ok if an error
+// reducing split exists.
+func continuousFeatureMSESplit (data [][]float64, feature int, output int) (splitValue, mse float64, ok bool) {
 	var (
 		leftStats, rightStats StatAccumulator
 	)
@@ -82,16 +86,17 @@ func continuousFeatureMSESplit (data [][]float64, feature int, output int) (spli
 		rightStats.Add(row[output])
 	}
 
-	bestError := math.MaxFloat64
-	bestSplitValue := - math.MaxFloat64
+	bestError := rightStats.Variance()
+	splitValue = - math.MaxFloat64
 	previousSplitCandidate := - math.MaxFloat64
 
-	for _,row := range data {
-		if (row[feature] != previousSplitCandidate) {
+	for i,row := range data {
+		if (i != 0 && row[feature] != previousSplitCandidate) {
 			error := math.Max(rightStats.Variance(), leftStats.Variance())
 			if error < bestError {
 				bestError = error
-				bestSplitValue = row[feature]
+				splitValue = row[feature]
+				ok = true
 			}
 		}
 		leftStats.Add(row[output])
@@ -99,5 +104,40 @@ func continuousFeatureMSESplit (data [][]float64, feature int, output int) (spli
 
 		previousSplitCandidate = row[feature]
 	}
-	return bestSplitValue, bestError
+	return splitValue, bestError, ok
+}
+
+// Split the data with a categorical output variable along the feature
+// axis.  Return the feature value for the split, the entropy after
+// the split, and ok if an entropy reducing split exists.
+func continuousFeatureEntropySplit (data [][]float64, feature int, output int, categoryRange int) (splitValue, entropy float64, ok bool) {
+	leftEntropy := NewEntropyAccumulator(categoryRange)
+	rightEntropy := NewEntropyAccumulator(categoryRange)
+
+	s := sortableData{data, feature}
+	sort.Sort(s)
+
+	for _,row := range data {
+		rightEntropy.Add(int(row[output]))
+	}
+
+	bestEntropy := rightEntropy.Entropy();
+	splitValue = - math.MaxFloat64
+	previousSplitCandidate := - math.MaxFloat64
+
+	for i,row := range data {
+		if (i != 0 && row[feature] != previousSplitCandidate) {
+			entropy := math.Max(rightEntropy.Entropy(), leftEntropy.Entropy())
+			if entropy < bestEntropy {
+				bestEntropy = entropy
+				splitValue = row[feature]
+				ok = true
+			}
+		}
+		leftEntropy.Add(int(row[output]))
+		rightEntropy.Remove(int(row[output]))
+
+		previousSplitCandidate = row[feature]
+	}
+	return splitValue, bestEntropy, ok
 }
