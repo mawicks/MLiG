@@ -6,18 +6,18 @@ import (
 )
 
 func testDataMSE (t *testing.T, msg string, data [][]float64, feature, output int, expectedSplit, expectedLeftError, expectedRightError float64, size int) {
-	split, leftError, rightError, leftSize := continuousFeatureMSESplit(data, feature, output)
-	if (split != expectedSplit) {
-		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, split)
+	splitInfo := continuousFeatureMSESplit(data, feature, output)
+	if (splitInfo.splitValue != expectedSplit) {
+		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, splitInfo.splitValue)
 	}
-	if math.Abs(leftError-expectedLeftError) > 1e-12*math.Abs(expectedLeftError) {
-		t.Errorf ("%s: expected left error: %v; got: %v", msg, expectedLeftError, leftError)
+	if math.Abs(splitInfo.leftSplitMetric-expectedLeftError) > 1e-12*math.Abs(expectedLeftError) {
+		t.Errorf ("%s: expected left error: %v; got: %v", msg, expectedLeftError, splitInfo.leftSplitMetric)
 	}
-	if math.Abs(rightError-expectedRightError) > 1e-12*math.Abs(expectedRightError) {
-		t.Errorf ("%s: expected right error: %v; got: %v", msg, expectedRightError, rightError)
+	if math.Abs(splitInfo.rightSplitMetric-expectedRightError) > 1e-12*math.Abs(expectedRightError) {
+		t.Errorf ("%s: expected right error: %v; got: %v", msg, expectedRightError, splitInfo.rightSplitMetric)
 	}
-	if leftSize != size {
-		t.Errorf ("%s: expected left split size: %v; got: %v", msg, size, leftSize)
+	if splitInfo.leftSplitSize != size {
+		t.Errorf ("%s: expected left split size: %v; got: %v", msg, size, splitInfo.leftSplitSize)
 	}
 }
 
@@ -46,18 +46,18 @@ func TestContinuousFeatureMSESplit (t *testing.T) {
 }
 
 func testDataEntropy (t *testing.T, msg string, data [][]float64, feature, output, outputValueCount int, expectedSplit, expectedLeftEntropy, expectedRightEntropy float64, size int) {
-	split, leftEntropy, rightEntropy, leftSize := continuousFeatureEntropySplit(data, feature, output, outputValueCount)
-	if (split != expectedSplit) {
-		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, split)
+	splitInfo := continuousFeatureEntropySplit(data, feature, output, outputValueCount)
+	if (splitInfo.splitValue != expectedSplit) {
+		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, splitInfo.splitValue)
 	}
-	if math.Abs(leftEntropy-expectedLeftEntropy) > 1e-12*math.Abs(expectedLeftEntropy) {
-		t.Errorf ("%s: expected left entropy: %v; got: %v", msg, expectedLeftEntropy, leftEntropy)
+	if math.Abs(splitInfo.leftSplitMetric-expectedLeftEntropy) > 1e-12*math.Abs(expectedLeftEntropy) {
+		t.Errorf ("%s: expected left entropy: %v; got: %v", msg, expectedLeftEntropy, splitInfo.leftSplitMetric)
 	}
-	if math.Abs(rightEntropy-expectedRightEntropy) > 1e-12*math.Abs(expectedRightEntropy) {
-		t.Errorf ("%s: expected right entropy: %v; got: %v", msg, expectedRightEntropy, rightEntropy)
+	if math.Abs(splitInfo.rightSplitMetric-expectedRightEntropy) > 1e-12*math.Abs(expectedRightEntropy) {
+		t.Errorf ("%s: expected right entropy: %v; got: %v", msg, expectedRightEntropy, splitInfo.rightSplitMetric)
 	}
-	if leftSize != size {
-		t.Errorf ("%s: expected left split size: %v; got: %v", msg, size, leftSize)
+	if splitInfo.leftSplitSize != size {
+		t.Errorf ("%s: expected left split size: %v; got: %v", msg, size, splitInfo.leftSplitSize)
 	}
 }
 
@@ -79,3 +79,4 @@ func TestContinuousFeatureEntropySplit (t *testing.T) {
 	testDataEntropy (t, "test1", test1, 0, 1, 5, 2.0, 0.0, -(2.*math.Log2(2./3.)+1.*math.Log2(1./3))/3., 1)
 	testDataEntropy (t, "test2", test2, 0, 1, 3, 2.0, 0.0, 0.0, 1)
 }
+

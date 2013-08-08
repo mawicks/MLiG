@@ -6,8 +6,8 @@ import (
 )
 
 func checkMeanAndVariance(t *testing.T, msg string, a StatAccumulator, mean, variance float64) {
-	if a.Variance() != variance {
-		t.Errorf ("Variance() %s is %v; expected %v", msg, a.Variance(), variance)
+	if a.Metric() != variance {
+		t.Errorf ("Variance() %s is %v; expected %v", msg, a.Metric(), variance)
 	}
 
 	if a.Mean() != mean {

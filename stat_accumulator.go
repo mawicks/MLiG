@@ -29,7 +29,7 @@ func (sa *StatAccumulator) Count() int {
 	return sa.count
 }
 
-func (sa *StatAccumulator) Variance() float64 {
+func (sa *StatAccumulator) Metric() float64 {
 	n := float64(sa.count)
 	result := 0.0
 	if sa.count > 0 {
