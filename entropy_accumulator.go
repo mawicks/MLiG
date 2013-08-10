@@ -54,4 +54,3 @@ func (ea *EntropyAccumulator) Clear() {
 	ea.totalCount = 0
 }
 
-

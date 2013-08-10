@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func testDataMSE (t *testing.T, msg string, data [][]float64, feature, output int, expectedSplit, expectedLeftError, expectedRightError float64, size int) {
-	splitInfo := continuousFeatureMSESplit(data, feature, output)
+func testDataMSE (t *testing.T, msg string, data []*Data, feature, output int, expectedSplit, expectedLeftError, expectedRightError float64, size int) {
+	splitInfo := continuousFeatureMSESplit(data, feature)
 	if (splitInfo.splitValue != expectedSplit) {
 		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, splitInfo.splitValue)
 	}
@@ -22,21 +22,21 @@ func testDataMSE (t *testing.T, msg string, data [][]float64, feature, output in
 }
 
 func TestContinuousFeatureMSESplit (t *testing.T) {
-	test1 := [][]float64{
-		{3.0, 7.0},
-		{1.0, 4.0},
-		{2.0, 4.0}}
+	test1 := []*Data {
+		&Data{continuousFeatures: []float64 {3.0}, output: 7.0},
+		&Data{continuousFeatures: []float64 {1.0}, output: 4.0},
+		&Data{continuousFeatures: []float64 {2.0}, output: 4.0}}
 
-	test2 := [][]float64{
-		{2.0, 5.0},
-		{1.0, 3.0},
-		{3.0, 6.0}}
+	test2 := []*Data {
+		&Data{continuousFeatures: []float64{2.0}, output: 5.0},
+		&Data{continuousFeatures: []float64{1.0}, output: 3.0},
+		&Data{continuousFeatures: []float64{3.0}, output: 6.0}}
 
-	test3 := [][]float64{
-		{2.0, 5.0},
-		{2.0, 3.0},
-		{1.0, 3.0},
-		{3.0, 6.0}}
+	test3 := []*Data{
+		&Data{continuousFeatures: []float64{2.0}, output: 5.0},
+		&Data{continuousFeatures: []float64{2.0}, output: 3.0},
+		&Data{continuousFeatures: []float64{1.0}, output: 3.0},
+		&Data{continuousFeatures: []float64{3.0}, output: 6.0}}
 
 	// Remember that left branch consists of values < split
 	// right branch branch consists of values >= split
@@ -45,8 +45,8 @@ func TestContinuousFeatureMSESplit (t *testing.T) {
 	testDataMSE (t, "test3", test3, 0, 1, 3.0, 8.0/9.0, 0.0, 3)
 }
 
-func testDataEntropy (t *testing.T, msg string, data [][]float64, feature, output, outputValueCount int, expectedSplit, expectedLeftEntropy, expectedRightEntropy float64, size int) {
-	splitInfo := continuousFeatureEntropySplit(data, feature, output, outputValueCount)
+func testDataEntropy (t *testing.T, msg string, data []*Data, feature, outputValueCount int, expectedSplit, expectedLeftEntropy, expectedRightEntropy float64, size int) {
+	splitInfo := continuousFeatureEntropySplit(data, feature, outputValueCount)
 	if (splitInfo.splitValue != expectedSplit) {
 		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, splitInfo.splitValue)
 	}
@@ -62,21 +62,21 @@ func testDataEntropy (t *testing.T, msg string, data [][]float64, feature, outpu
 }
 
 func TestContinuousFeatureEntropySplit (t *testing.T) {
-	test1 := [][]float64{
-		{3.0, 3.0},
-		{1.0, 1.0},
-		{2.0, 2.0},
-		{3.0, 3.0}}
+	test1 := []*Data {
+		&Data{continuousFeatures: []float64{3.0}, output: 3.0},
+		&Data{continuousFeatures: []float64{1.0}, output: 1.0},
+		&Data{continuousFeatures: []float64{2.0}, output: 2.0},
+		&Data{continuousFeatures: []float64{3.0}, output: 3.0}}
 	
-	test2 := [][]float64{
-		{3.0, 2.0},
-		{1.0, 1.0},
-		{2.0, 2.0},
-		{3.0, 2.0}}
+	test2 := []*Data {
+		&Data{continuousFeatures: []float64{3.0}, output: 2.0},
+		&Data{continuousFeatures: []float64{1.0}, output: 1.0},
+		&Data{continuousFeatures: []float64{2.0}, output: 2.0},
+		&Data{continuousFeatures: []float64{3.0}, output: 2.0}}
 	
 	// Remember that left branch consists of values < split
 	// right branch branch consists of values >= split
-	testDataEntropy (t, "test1", test1, 0, 1, 5, 2.0, 0.0, -(2.*math.Log2(2./3.)+1.*math.Log2(1./3))/3., 1)
-	testDataEntropy (t, "test2", test2, 0, 1, 3, 2.0, 0.0, 0.0, 1)
+	testDataEntropy (t, "test1", test1, 0, 5, 2.0, 0.0, -(2.*math.Log2(2./3.)+1.*math.Log2(1./3))/3., 1)
+	testDataEntropy (t, "test2", test2, 0, 3, 2.0, 0.0, 0.0, 1)
 }
 

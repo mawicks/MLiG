@@ -37,23 +37,3 @@ func TestStatAccumulator (t *testing.T) {
 
 	checkMeanAndVariance(t, s, a, 18.0, 0.0)
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
