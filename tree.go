@@ -1,6 +1,8 @@
 package ML
 
 import (
+	"fmt"
+	"io"
 	"math"
 	"sort"
 	"math/rand"
@@ -55,7 +57,9 @@ type SplitInfo struct {
 // the size of the left split.  The returned size will be zero if the
 // error cannot be reduced.
 func continuousFeatureSplit (data []*Data, featureIndex int, left, right CVAccumulator) (splitInfo SplitInfo) {
-
+	left.Clear()
+	right.Clear()
+	
 	s := sortableData{data, featureIndex}
 	sort.Sort(s)
 
@@ -101,7 +105,7 @@ func continuousFeatureSplit (data []*Data, featureIndex int, left, right CVAccum
 // split, the left and right mean-squared error after the split, and
 // the size of the left split.  The returned size will be zero if the
 // error cannot be reduced.
-func continuousFeatureMSESplit (data []*Data, featureIndex int) (splitInfo SplitInfo) {
+func continuousFeatureMSESplit (data[] *Data, featureIndex int) SplitInfo {
 	var (
 		left, right StatAccumulator
 	)
@@ -112,11 +116,13 @@ func continuousFeatureMSESplit (data []*Data, featureIndex int) (splitInfo Split
 // axis.  Return the feature value for the split, the entropies of the
 // left and right splits, the size of the left split.  The returned
 // size will be zero if the entropy cannot be reduced.
-func continuousFeatureEntropySplit (data []*Data, featureIndex int, categoryRange int) (splitInfo SplitInfo) {
-	left := NewEntropyAccumulator(categoryRange)
-	right := NewEntropyAccumulator(categoryRange)
-
-	return continuousFeatureSplit (data, featureIndex, left, right)
+func continuousFeatureEntropySplitter (categoryRange int) func ([]*Data, int) SplitInfo {
+	return func (data []*Data, featureIndex int) SplitInfo {
+		left := NewEntropyAccumulator(categoryRange)
+		right := NewEntropyAccumulator(categoryRange)
+		
+		return continuousFeatureSplit (data, featureIndex, left, right)
+	}
 }
 
 type treeNode struct {
@@ -124,6 +130,13 @@ type treeNode struct {
 	right *treeNode
 	
 	featureType FeatureType // Either CATEGORICAL OR CONTINUOUS
+
+	// metric provides the performance of this node on the sample
+	// data.  For a leaf node, it represents the irreducible
+	// performance on the data set that could not be split.  For a
+	// non-leaf node, it should be the max of the metrics of the
+	// left and right decendents.
+	metric float64
 
 	// In a leaf node, featureIndex is < 0, and the two partition
 	// pointers are nil.  In a non-leaf node, featureIndex is a
@@ -138,41 +151,72 @@ type treeNode struct {
 	splitValue float64
 }
 
-func splitData (data []*Data, left[]*Data, right[]*Data) {
+func NewTreeNode (metric float64) *treeNode {
+	return &treeNode{
+		featureType: CONTINUOUS,
+		featureIndex: -1,
+		metric: metric,
+		// initialization of splitValue is not very important as it is not used if featureIndex < 0
+		splitValue: math.MaxFloat64,
+	}
 }
 
-func (tree *treeNode) Grow (data []*Data) {
+func splitData (data []*Data, splitValue float64, splitFeatureIndex int, left[]*Data, right[]*Data) {
+	leftCount := 0
+	leftSize := len(left)
+	rightCount := 0
+	rightSize := len(right)
+	for _,dp := range data {
+		if dp.continuousFeatures[splitFeatureIndex] < splitValue {
+			left[leftCount] = dp
+			leftCount += 1
+		} else {
+			right[rightCount] = dp
+			rightCount += 1
+		}
+	}
+	if leftSize != leftCount  || rightSize != rightCount {
+		panic ("Split sizes are not as expected in splitData()")
+	}
+}
+
+// Dump() produces a visual representation of the tree on the io.Writer.  The parameter depth
+// is the depth of this node in the tree.
+func (tree *treeNode) Dump(w io.Writer, depth int) {
+	fmt.Fprintf (w, "%*c Feature: %d; Split value: %v\n", 3*depth, tree.featureIndex, tree.splitValue)
+}
+
+func (tree *treeNode) Grow (data []*Data, featuresToTest int, continuousFeatureSplit func ([]*Data, int) SplitInfo) {
 	if (len(data) == 0) {
 		return
 	}
-	// FIXME:
-	categoryRange := 10
-	featuresToTest := 5
 
 	var bestSplitInfo SplitInfo
-	bestSplitMetric := math.MaxFloat64
 
 	for i:= 0; i<featuresToTest; i++ {
 		candidateFeatureIndex := int(rand.Int31n(int32(len(data[0].continuousFeatures))))
-		candidateSplitInfo := continuousFeatureEntropySplit(data, candidateFeatureIndex, categoryRange)
+		candidateSplitInfo := continuousFeatureSplit(data, candidateFeatureIndex)
 		candidateMetric := math.Max(candidateSplitInfo.leftSplitMetric,candidateSplitInfo.rightSplitMetric)
-		if candidateSplitInfo.leftSplitSize != 0 && candidateMetric < bestSplitMetric {
+		if candidateSplitInfo.leftSplitSize != 0 && candidateMetric < tree.metric {
 			bestSplitInfo = candidateSplitInfo
-			bestSplitMetric = candidateMetric
-			tree.splitValue = candidateSplitInfo.splitValue
-			tree.featureIndex = i
+			tree.metric = candidateMetric
+			tree.featureIndex = candidateFeatureIndex
 		}
 	}
-	if bestSplitMetric != math.MaxFloat64 {
+
+	if tree.featureIndex >= 0 {
+		tree.splitValue = bestSplitInfo.splitValue
+
 		leftData := make([]*Data, bestSplitInfo.leftSplitSize)
 		rightData := make([]*Data, bestSplitInfo.rightSplitSize)
 
-		splitData(data, leftData, rightData)
-		tree.left = &treeNode{}
-		tree.left.Grow(leftData)
-		tree.right = &treeNode{}
-		// FIXME: split data
-		tree.right.Grow(rightData)
+		splitData(data, tree.splitValue, tree.featureIndex, leftData, rightData)
+
+		tree.left = NewTreeNode(bestSplitInfo.leftSplitMetric)
+		tree.right = NewTreeNode(bestSplitInfo.rightSplitMetric)
+
+		tree.left.Grow(leftData, featuresToTest, continuousFeatureSplit)
+		tree.right.Grow(rightData, featuresToTest, continuousFeatureSplit)
 	}
 }
 
@@ -190,6 +234,3 @@ func (tree *treeNode) classify(feature []float64) float64 {
 		}
 	}
 }
-
-
-

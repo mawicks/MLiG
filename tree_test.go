@@ -46,7 +46,8 @@ func TestContinuousFeatureMSESplit (t *testing.T) {
 }
 
 func testDataEntropy (t *testing.T, msg string, data []*Data, feature, outputValueCount int, expectedSplit, expectedLeftEntropy, expectedRightEntropy float64, size int) {
-	splitInfo := continuousFeatureEntropySplit(data, feature, outputValueCount)
+	f := continuousFeatureEntropySplitter (outputValueCount)
+	splitInfo := f(data, feature)
 	if (splitInfo.splitValue != expectedSplit) {
 		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, splitInfo.splitValue)
 	}
