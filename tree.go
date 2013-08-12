@@ -50,6 +50,7 @@ func (s sortableData) Swap(i, j int) {
 type SplitInfo struct {
 	splitValue float64
 	leftSplitMetric, rightSplitMetric float64
+	compositeSplitMetric float64
 	leftSplitSize, rightSplitSize int
 }
 
@@ -70,12 +71,14 @@ func continuousFeatureSplit (data []*Data, featureIndex int, left, right CVAccum
 		right.Add(row.output)
 	}
 
-	bestMetric := right.Metric()
+	rightMetric := right.Metric()
+
 	splitInfo = SplitInfo {
 		// Initialize splitValue with the *output* estimate
 		splitValue: right.Estimate(),
-		leftSplitMetric: bestMetric,
-		rightSplitMetric: bestMetric,
+		leftSplitMetric: 0,
+		rightSplitMetric: rightMetric,
+		compositeSplitMetric: rightMetric,
 		leftSplitSize: 0,
 		rightSplitSize: len(data) }
 	
@@ -85,13 +88,15 @@ func continuousFeatureSplit (data []*Data, featureIndex int, left, right CVAccum
 		if (i != 0 && row.continuousFeatures[featureIndex] != previousSplitCandidate) {
 			leftMetric := left.Metric()
 			rightMetric := right.Metric()
-			error := math.Max(leftMetric,rightMetric)
-			if error < bestMetric {
-				bestMetric = error
+			leftCount := left.Count()
+			rightCount := right.Count()
+			error := (float64(leftCount)*leftMetric + float64(rightCount)*rightMetric)/float64(leftCount+rightCount)
+			if error < splitInfo.compositeSplitMetric {
 				splitInfo = SplitInfo {
 					splitValue: row.continuousFeatures[featureIndex],
 					leftSplitMetric: leftMetric,
 					rightSplitMetric: rightMetric,
+					compositeSplitMetric: error,
 					leftSplitSize: left.Count(),
 					rightSplitSize: right.Count() }
 			}
@@ -212,10 +217,9 @@ func (tree *treeNode) Grow(data []*Data, featuresToTest int, continuousFeatureSp
 		candidateFeatureIndex := int(rand.Int31n(int32(len(data[0].continuousFeatures))))
 		candidateSplitInfo := continuousFeatureSplit(data, candidateFeatureIndex)
 		tree.splitValue = candidateSplitInfo.splitValue
-		candidateMetric := math.Max(candidateSplitInfo.leftSplitMetric,candidateSplitInfo.rightSplitMetric)
-		if candidateSplitInfo.leftSplitSize != 0 && candidateMetric < tree.metric {
+		if candidateSplitInfo.leftSplitSize != 0 && candidateSplitInfo.compositeSplitMetric < tree.metric {
 			bestSplitInfo = candidateSplitInfo
-			tree.metric = candidateMetric
+			tree.metric = candidateSplitInfo.compositeSplitMetric
 			tree.featureIndex = candidateFeatureIndex
 		}
 	}
