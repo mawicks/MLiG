@@ -3,6 +3,7 @@ package ML
 import (
 	"math"
 	"testing"
+	"os"
 )
 
 func testDataMSE (t *testing.T, msg string, data []*Data, feature, output int, expectedSplit, expectedLeftError, expectedRightError float64, size int) {
@@ -80,4 +81,44 @@ func TestContinuousFeatureEntropySplit (t *testing.T) {
 	testDataEntropy (t, "test1", test1, 0, 5, 2.0, 0.0, -(2.*math.Log2(2./3.)+1.*math.Log2(1./3))/3., 1)
 	testDataEntropy (t, "test2", test2, 0, 3, 2.0, 0.0, 0.0, 1)
 }
+
+func TestGrow (t *testing.T) {
+	test := []*Data{
+		&Data{continuousFeatures: []float64{0.0, 1.0}, output: 1.0},
+		&Data{continuousFeatures: []float64{1.0, 1.0}, output: 1.0},
+		&Data{continuousFeatures: []float64{2.0, 1.0}, output: 1.0},
+		&Data{continuousFeatures: []float64{2.0, 2.0}, output: 2.0},
+		&Data{continuousFeatures: []float64{3.0, 1.0}, output: 2.0},
+		&Data{continuousFeatures: []float64{4.0, 0.0}, output: 2.0}}
+
+	tree := NewTreeNode (math.MaxFloat64)
+	f := continuousFeatureEntropySplitter (3)
+
+	tree.Grow(test, 20, f)
+	for _,d := range test {
+		if d.output != tree.Classify(d.continuousFeatures) {
+			t.Errorf ("%g classified as %g\n", d.output, tree.Classify(d.continuousFeatures))
+		}
+	}
+	
+	tree.Dump(os.Stdout, 0, 0)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

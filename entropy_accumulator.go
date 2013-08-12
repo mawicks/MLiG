@@ -6,8 +6,6 @@ import (
 	"math"
 )
 
-// A new EntropyAccumulator may be declared without initialization.
-// The Go default initialization is correct.
 type EntropyAccumulator struct {
 	counts []int
 	totalCount int
@@ -34,6 +32,18 @@ func (ea *EntropyAccumulator) Remove(category float64) {
 
 func (ea *EntropyAccumulator) Count() int {
 	return ea.totalCount
+}
+
+func (ea *EntropyAccumulator) Estimate() float64 {
+	maxCount := 0
+	result := 0.0
+	for i,count := range ea.counts {
+		if count > maxCount {
+			maxCount = count
+			result = float64(i)
+		}
+	}
+	return result
 }
 
 func (ea *EntropyAccumulator) Metric() float64 {

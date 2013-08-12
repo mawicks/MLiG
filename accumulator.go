@@ -1,8 +1,11 @@
 package ML
 
 type CVAccumulator interface {
+	Add (float64)
 	Count() int
 	Clear()
-	Add (float64)
+	Metric() float64
 	Remove (float64)
-	Metric() float64 }
+	Estimate() float64
+}
+

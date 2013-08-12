@@ -41,7 +41,7 @@ func (sa *StatAccumulator) Metric() float64 {
 	return result
 }
 
-func (sa *StatAccumulator) Mean() float64 {
+func (sa *StatAccumulator) Estimate() float64 {
 	result := 0.0
 	if sa.count > 0 {
 		result = sa.sum/float64(sa.count)
