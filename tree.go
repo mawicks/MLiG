@@ -240,7 +240,7 @@ func (tree *treeNode) Grow(data []*Data, featuresToTest int, continuousFeatureSp
 	}
 }
 
-// Classify the passed feature vector.
+// Classify (or predict) the passed feature vector.
 func (tree *treeNode) Classify(feature []float64) float64 {
 	// Leaf node?
 	if tree.featureIndex < 0 {
