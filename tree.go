@@ -194,14 +194,14 @@ func splitData (data []*Data, splitValue float64, splitFeatureIndex int, left[]*
 func (tree *treeNode) Dump(w io.Writer, index, depth int) {
 	indent := 4*depth + 1
 	if (tree.featureIndex < 0) {
-		fmt.Fprintf (w, "%*c %2d - Leaf node: output: %g; metric: %g\n", indent, ' ', index, tree.splitValue, tree.metric)
+		fmt.Fprintf (w, "%*c %2d - Leaf node - output: %g; metric: %g\n", indent, ' ', index, tree.splitValue, tree.metric)
 	} else {
-		fmt.Fprintf (w, "%*c %2d - Split feature %d: split value: %g; metric: %g\n", indent, ' ', index, tree.featureIndex, tree.splitValue, tree.metric)
+		fmt.Fprintf (w, "%*c %2d - Split on feature %d at value %g; metric: %g\n", indent, ' ', index, tree.featureIndex, tree.splitValue, tree.metric)
 
-		fmt.Fprintf (w, "%*c %2d - Left branch:\n", indent, ' ', index)
+		fmt.Fprintf (w, "%*c %2d - Left branch (feature %d < %g):\n", indent, ' ', index, tree.featureIndex, tree.splitValue)
 		tree.left.Dump(w, index+1, depth+1)
 
-		fmt.Fprintf (w, "%*c %2d - Right branch:\n", indent, ' ', index)
+		fmt.Fprintf (w, "%*c %2d - Right branch (feature %d >= %g):\n", indent, ' ', index, tree.featureIndex, tree.splitValue)
 		tree.right.Dump(w, index+2, depth+1)
 	}
 }
