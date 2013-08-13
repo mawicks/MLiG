@@ -170,6 +170,7 @@ func NewTreeNode (metric float64) *treeNode {
 	}
 }
 
+// splitData() splits "data" into a "left" and "right" portions based on "splitValue" and "splitFeatureIndex".
 func splitData (data []*Data, splitValue float64, splitFeatureIndex int, left[]*Data, right[]*Data) {
 	leftCount := 0
 	leftSize := len(left)

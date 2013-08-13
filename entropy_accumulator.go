@@ -18,6 +18,9 @@ func NewEntropyAccumulator(categoryValueCount int) *EntropyAccumulator {
 }
 
 func (ea *EntropyAccumulator) Add(category float64) {
+	if int(category) >= len(ea.counts) || (int(category) < 0) {
+		panic (fmt.Sprintf ("Attempt to add to category %g but only %d categories", category, len(ea.counts)))
+	}
 	ea.totalCount += 1
 	ea.counts[int(category)] += 1
 }
