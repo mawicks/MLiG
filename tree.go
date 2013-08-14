@@ -25,9 +25,9 @@ type Data struct {
 	continuousFeatures []float64
 	categoricalFeatures []int
 	output float64
-	outputCategories int // 0 means continuous
+	outputCategories int // 0 means no output, 1 means continuous
 
-	oobAccumulator CVAccumulator
+	oobAccumulator ErrorAccumulator
 }
 
 type sortableData struct {

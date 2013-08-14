@@ -46,5 +46,5 @@ func (te *TreeEnsemble) Error (data[]*Data) float64 {
 			te.errorAccumulator.Add(d.output - d.oobAccumulator.Estimate())
 		}
 	}
-	return te.errorAccumulator.Metric()
+	return te.errorAccumulator.Estimate()
 }

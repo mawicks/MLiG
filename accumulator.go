@@ -4,12 +4,12 @@ type ErrorAccumulator interface {
 	Add (float64)
 	Count() int
 	Clear()
-	Metric() float64
+	Estimate() float64
 }
 
 type CVAccumulator interface {
 	ErrorAccumulator
 	Remove (float64)
-	Estimate() float64
+	Metric() float64
 }
 

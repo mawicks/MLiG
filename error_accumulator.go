@@ -16,7 +16,7 @@ func (ea *errorAccumulator) Count() int {
 	return ea.totalCount
 }
 
-func (ea *errorAccumulator) Metric() float64 {
+func (ea *errorAccumulator) Estimate() float64 {
 	if ea.totalCount > 0 {
 		return float64(ea.errorCount)/float64(ea.totalCount)
 	}
