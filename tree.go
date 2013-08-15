@@ -255,3 +255,43 @@ func (tree *treeNode) Classify(feature []float64) float64 {
 		}
 	}
 }
+
+func (tree *treeNode) Size() int {
+	if tree.featureIndex < 0 {
+		return 1
+	} else {
+		return tree.left.Size() + tree.right.Size()
+	}
+}
+
+func (tree *treeNode) Depth() int {
+	result := 0
+	if tree.featureIndex < 0 {
+		result = 1
+	} else {
+		result = 1 + tree.left.Depth()
+		rightDepth := tree.right.Depth()
+		if rightDepth >= result {
+			result = 1 + rightDepth
+		}
+	}
+	return result
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

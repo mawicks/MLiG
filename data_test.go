@@ -16,7 +16,9 @@ func TestGlassData (t *testing.T) {
 	ensemble := NewTreeEnsemble()
 
 	for i:=0; i<1000; i++ {
-		ensemble.AddTree(glassData, 4, f)
+		newTree := NewBaggedTree(glassData, 4, f)
+		fmt.Printf ("Tree %d stats - size: %d  depth: %d\n", i, newTree.Size(), newTree.Depth())
+		ensemble.AddTree(newTree)
 		mserror := ensemble.Error(glassData)
 		if i % 100 == 0 {
 			fmt.Printf ("Trees: %d: error=%g\n", i, mserror)
@@ -34,7 +36,9 @@ func TestDigitData (t *testing.T) {
 	ensemble := NewTreeEnsemble()
 
 	for i:=0; i<1000; i++ {
-		ensemble.AddTree(digitData, 10, f)
+		newTree := NewBaggedTree(digitData, 10, f)
+		ensemble.AddTree(newTree)
+		fmt.Printf ("Tree %d stats - size: %d  depth: %d\n", i, newTree.Size(), newTree.Depth())
 		mserror := ensemble.Error(digitData)
 		if i % 1 == 0 {
 			fmt.Printf ("Trees: %d: error=%g\n", i, mserror)

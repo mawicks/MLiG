@@ -15,15 +15,14 @@ func NewTreeEnsemble() *TreeEnsemble {
 		trees: make([]*treeNode,0,1000)}
 }
 
-func (te *TreeEnsemble) AddTree (data[]*Data, featuresToTest int, continuousFeatureSplit func ([]*Data, int) SplitInfo) {
+func NewBaggedTree (data[]*Data, featuresToTest int, continuousFeatureSplit func ([]*Data, int) SplitInfo) (newTree *treeNode) {
 	trainSize := 2*len(data)/3
 
 	// Shuffle data and take first "trainSize" samples as the bag or training set.
 	ShuffleData(data)
 	trainSet := data[0:trainSize]
-	newTree := NewTreeNode(math.MaxFloat64)
+	newTree = NewTreeNode(math.MaxFloat64)
 	newTree.Grow(trainSet, featuresToTest, continuousFeatureSplit)
-	te.trees = append(te.trees, newTree)
 	
 	// Use remaining samples as the "out-of-bag" test set.  Each
 	// tree gets its own out-of-bag test set.  All of the
@@ -36,6 +35,11 @@ func (te *TreeEnsemble) AddTree (data[]*Data, featuresToTest int, continuousFeat
 		prediction := newTree.Classify(d.continuousFeatures)
 		d.oobAccumulator.Add (prediction)
 	}
+	return newTree
+}
+
+func (te *TreeEnsemble) AddTree (newTree *treeNode) {
+	te.trees = append(te.trees, newTree)
 }
 
 func (te *TreeEnsemble) Error (data[]*Data) float64 {
