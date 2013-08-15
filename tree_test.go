@@ -91,16 +91,16 @@ func TestGrow (t *testing.T) {
 		&Data{continuousFeatures: []float64{3.0, 1.0}, output: 2.0},
 		&Data{continuousFeatures: []float64{4.0, 0.0}, output: 2.0}}
 
-	tree := NewTreeNode (math.MaxFloat64)
+	treeNode := NewTreeNode (math.MaxFloat64)
 	f := continuousFeatureEntropySplitter (3)
 
-	tree.Grow(test, 128, f)
+	treeNode.grow(test, 128, f)
 	for _,d := range test {
-		if d.output != tree.Classify(d.continuousFeatures) {
-			t.Errorf ("%g classified as %g\n", d.output, tree.Classify(d.continuousFeatures))
+		if d.output != treeNode.classify(d.continuousFeatures) {
+			t.Errorf ("%g classified as %g\n", d.output, treeNode.classify(d.continuousFeatures))
 		}
 	}
 	
-	tree.Dump(os.Stdout, 0, 0)
+	treeNode.dump(os.Stdout, 0, 0)
 }
 

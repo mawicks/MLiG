@@ -134,6 +134,40 @@ func continuousFeatureEntropySplitter (categoryRange int) func ([]*Data, int) Sp
 	}
 }
 
+type Tree struct {
+	root *treeNode
+	featuresToTest int
+	continuousFeatureSplit func ([]*Data, int) SplitInfo
+}
+
+func NewTree (featuresToTest int, cfSplitter func ([]*Data, int) SplitInfo) *Tree {
+	return &Tree{
+		root: nil,
+		featuresToTest: featuresToTest,
+		continuousFeatureSplit: cfSplitter}
+}
+
+func (tree *Tree) Train(trainingSet[] *Data) {
+	tree.root = NewTreeNode(math.MaxFloat64)
+	tree.root.grow(trainingSet, tree.featuresToTest, tree.continuousFeatureSplit)
+}
+
+func (tree *Tree) Classify(feature []float64) float64 {
+	return tree.root.classify(feature)
+}
+
+func (tree *Tree) Dump(w io.Writer) {
+	tree.root.dump(w, 0, 0)
+}
+
+func (tree *Tree) Size() int {
+	return tree.root.size()
+}
+
+func (tree *Tree) Depth() int {
+	return tree.root.depth()
+}
+
 type treeNode struct {
 	left *treeNode
 	right *treeNode
@@ -192,7 +226,7 @@ func splitData (data []*Data, splitValue float64, splitFeatureIndex int, left[]*
 
 // Dump() produces a visual representation of the tree on the io.Writer.  The parameter depth
 // is the depth of this node in the tree.
-func (tree *treeNode) Dump(w io.Writer, index, depth int) {
+func (tree *treeNode) dump(w io.Writer, index, depth int) {
 	indent := 4*depth + 1
 	if (tree.featureIndex < 0) {
 		fmt.Fprintf (w, "%*c %2d - Leaf node - output: %g; metric: %g\n", indent, ' ', index, tree.splitValue, tree.metric)
@@ -200,14 +234,14 @@ func (tree *treeNode) Dump(w io.Writer, index, depth int) {
 		fmt.Fprintf (w, "%*c %2d - Split on feature %d at value %g; metric: %g\n", indent, ' ', index, tree.featureIndex, tree.splitValue, tree.metric)
 
 		fmt.Fprintf (w, "%*c %2d - Left branch (feature %d < %g):\n", indent, ' ', index, tree.featureIndex, tree.splitValue)
-		tree.left.Dump(w, index+1, depth+1)
+		tree.left.dump(w, index+1, depth+1)
 
 		fmt.Fprintf (w, "%*c %2d - Right branch (feature %d >= %g):\n", indent, ' ', index, tree.featureIndex, tree.splitValue)
-		tree.right.Dump(w, index+2, depth+1)
+		tree.right.dump(w, index+2, depth+1)
 	}
 }
 
-func (tree *treeNode) Grow(data []*Data, featuresToTest int, continuousFeatureSplit func ([]*Data, int) SplitInfo) {
+func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSplit func ([]*Data, int) SplitInfo) {
 	if (len(data) == 0) {
 		return
 	}
@@ -236,62 +270,44 @@ func (tree *treeNode) Grow(data []*Data, featuresToTest int, continuousFeatureSp
 		tree.left = NewTreeNode(bestSplitInfo.leftSplitMetric)
 		tree.right = NewTreeNode(bestSplitInfo.rightSplitMetric)
 
-		tree.left.Grow(leftData, featuresToTest, continuousFeatureSplit)
-		tree.right.Grow(rightData, featuresToTest, continuousFeatureSplit)
+		tree.left.grow(leftData, featuresToTest, continuousFeatureSplit)
+		tree.right.grow(rightData, featuresToTest, continuousFeatureSplit)
 	}
 }
 
 // Classify (or predict) the passed feature vector.
-func (tree *treeNode) Classify(feature []float64) float64 {
+func (tree *treeNode) classify(feature []float64) float64 {
 	// Leaf node?
 	if tree.featureIndex < 0 {
 		return tree.splitValue
 	} else {
 		switch  {
 		case feature[tree.featureIndex] < tree.splitValue:
-			return tree.left.Classify(feature)
+			return tree.left.classify(feature)
 		default:
-			return tree.right.Classify(feature)
+			return tree.right.classify(feature)
 		}
 	}
 }
 
-func (tree *treeNode) Size() int {
+func (tree *treeNode) size() int {
 	if tree.featureIndex < 0 {
 		return 1
 	} else {
-		return tree.left.Size() + tree.right.Size()
+		return tree.left.size() + tree.right.size()
 	}
 }
 
-func (tree *treeNode) Depth() int {
+func (tree *treeNode) depth() int {
 	result := 0
 	if tree.featureIndex < 0 {
 		result = 1
 	} else {
-		result = 1 + tree.left.Depth()
-		rightDepth := tree.right.Depth()
+		result = 1 + tree.left.depth()
+		rightDepth := tree.right.depth()
 		if rightDepth >= result {
 			result = 1 + rightDepth
 		}
 	}
 	return result
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

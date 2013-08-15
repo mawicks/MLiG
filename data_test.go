@@ -13,12 +13,13 @@ func TestGlassData (t *testing.T) {
 	fmt.Fprintf (os.Stdout, "Read %d records from \"%s\"\n", len(glassData), filename)
 
 	f := continuousFeatureEntropySplitter (glassData[0].outputCategories)
-	ensemble := NewTreeEnsemble()
+	ensemble := NewEnsemble()
 
 	for i:=0; i<1000; i++ {
-		newTree := NewBaggedTree(glassData, 4, f)
+		newTree := NewTree(4, f)
+		TrainBag(glassData, newTree)
 		fmt.Printf ("Tree %d stats - size: %d  depth: %d\n", i, newTree.Size(), newTree.Depth())
-		ensemble.AddTree(newTree)
+		ensemble.AddClassifier(newTree)
 		mserror := ensemble.Error(glassData)
 		if i % 100 == 0 {
 			fmt.Printf ("Trees: %d: error=%g\n", i, mserror)
@@ -33,11 +34,12 @@ func TestDigitData (t *testing.T) {
 	fmt.Fprintf (os.Stdout, "Read %d records from \"%s\"\n", len(digitData), filename)
 
 	f := continuousFeatureEntropySplitter (digitData[0].outputCategories)
-	ensemble := NewTreeEnsemble()
+	ensemble := NewEnsemble()
 
 	for i:=0; i<1000; i++ {
-		newTree := NewBaggedTree(digitData, 10, f)
-		ensemble.AddTree(newTree)
+		newTree := NewTree(10, f)
+		TrainBag(digitData, newTree)
+		ensemble.AddClassifier(newTree)
 		fmt.Printf ("Tree %d stats - size: %d  depth: %d\n", i, newTree.Size(), newTree.Depth())
 		mserror := ensemble.Error(digitData)
 		if i % 1 == 0 {
