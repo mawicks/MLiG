@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func TestGlassData (t *testing.T) {
+func XTestGlassData (t *testing.T) {
 	const filename string = "Data/glass.data"
 
 	glassData := GlassData(filename)
@@ -28,7 +28,7 @@ func TestGlassData (t *testing.T) {
 	}		
 }
 
-func TestDigitData (t *testing.T) {
+func XTestDigitData (t *testing.T) {
 	const filename string = "Data/digits-train.csv"
 
 	start := time.Now()

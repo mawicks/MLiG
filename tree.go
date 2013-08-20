@@ -280,7 +280,7 @@ func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSp
 //		fc := randomSubspace(len(data[0].continuousFeatures))
 //		featureSelector := subspaceFeatureSelector(fc)
 		candidateSplitInfo := continuousFeatureSplitter(data, featureSelector)
-		if candidateSplitInfo.leftSplitSize > 5 && candidateSplitInfo.compositeSplitMetric < tree.metric {
+		if candidateSplitInfo.leftSplitSize > 0 && candidateSplitInfo.compositeSplitMetric < tree.metric {
 			bestSplitInfo = candidateSplitInfo
 			tree.metric = candidateSplitInfo.compositeSplitMetric
 			tree.featureSelector = featureSelector
