@@ -15,7 +15,7 @@ func aboutEqual(x, y float64) bool {
 }
 
 func testImageCentroid (t *testing.T, msg string, im GrayWithFeatures, cx, cy float64) {
-	x, y := imageCentroid(im.featureSums())
+	x, y := im.Centroid()
 	if (!aboutEqual(cx, x)) {
 		t.Errorf (fmt.Sprintf("%s: expected col centroid to be %g, got %g", msg, cx, x))
 	}
@@ -25,7 +25,7 @@ func testImageCentroid (t *testing.T, msg string, im GrayWithFeatures, cx, cy fl
 }
 
 func testImageEdges (t *testing.T, msg string, im GrayWithFeatures, vertical, horizontal float64) {
-	v, h := imageEdges(im.featureSums())
+	v, h := im.Edges()
 	if (!aboutEqual(v, vertical)) {
 		t.Errorf (fmt.Sprintf("%s: expected vertical count of %g, got %g", msg, vertical, v))
 	}
@@ -35,7 +35,7 @@ func testImageEdges (t *testing.T, msg string, im GrayWithFeatures, vertical, ho
 }
 
 func testImageMoments (t *testing.T, msg string, im GrayWithFeatures, rxx, ryy, rxy float64) {
-	eRxx, eRyy, eRxy := imageMoments(im.featureSums())
+	eRxx, eRyy, eRxy := im.Moments()
 	if (!aboutEqual(eRxx, rxx)) {
 		t.Errorf (fmt.Sprintf("%s: expected horizontal 2nd moment to be %g, got %g", msg, rxx, eRxx))
 	}

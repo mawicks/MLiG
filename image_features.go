@@ -59,16 +59,22 @@ func (gwf *GrayWithFeatures) featureSums() (fs featureSums) {
 	return
 }
 
-func imageCentroid (fs featureSums) (x,y float64) {
+func centroidFromSums(fs featureSums) (x, y float64) {
 	if fs.mass != 0 {
 		x,y = float64(fs.xMass)/float64(fs.mass),float64(fs.yMass)/float64(fs.mass)
 	}
 	return
 }
 
-func imageMoments (fs featureSums) (rxx, ryy, rxy float64) {
+func (gwf *GrayWithFeatures) Centroid () (x,y float64) {
+	fs := gwf.featureSums()
+	return centroidFromSums(fs)
+}
+
+func (gwf *GrayWithFeatures) Moments () (rxx, ryy, rxy float64) {
+	fs := gwf.featureSums()
 	if fs.mass != 0 {
-		cX, cY := imageCentroid(fs)
+		cX, cY := centroidFromSums(fs)
 		
 		r2xx := float64(fs.x2Mass)/float64(fs.mass) - cX*cX
 		r2yy := float64(fs.y2Mass)/float64(fs.mass) - cY*cY
@@ -91,7 +97,8 @@ func imageMoments (fs featureSums) (rxx, ryy, rxy float64) {
 // imageEdges returns the average number of vertical and horizontal
 // edges in the image.  For vertical edges the average is taken over all rows.
 // For horizontal edges the average is taken over all columns.
-func imageEdges (fs featureSums) (vertical, horizontal float64) {
+func (gwf *GrayWithFeatures) Edges() (vertical, horizontal float64) {
+	fs := gwf.featureSums()
 	vertical = float64(fs.xEdges)/float64(fs.rows)/float64(255.0)
 	horizontal = float64(fs.yEdges)/float64(fs.cols)/float64(255.0)
 	return
