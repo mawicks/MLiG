@@ -1,5 +1,10 @@
 package ML
 
+import (
+//	"fmt"
+//	"os"
+)
+
 type Ensemble struct {
 	errorAccumulator ErrorAccumulator
 	classifiers []Classifier
@@ -21,10 +26,11 @@ func TrainBag (data[]*Data, classifier Classifier) {
 	
 	// Use remaining samples as the "out-of-bag" test set.  Each
 	// classifier gets its own out-of-bag test set.  All of the
-	// classifications for all classifiers are accumulated within the
-	// test record's oobAccumulator.  The ensemble classification
-	// (over all classifier used to classify the record, which is not
-	// all classifiers) may be retrieved by oobAccumulator.Estimate().
+	// classifications for all classifiers are accumulated within
+	// the test record's oobAccumulator.  The ensemble
+	// classification (over all classifiers used to classify the
+	// record, which is not all classifiers) may be retrieved by
+	// oobAccumulator.Estimate().
 	testSet := data[trainSize:]
 	for _,d := range testSet {
 		prediction := classifier.Classify(d.continuousFeatures)
@@ -41,7 +47,12 @@ func (te *Ensemble) Error (data[]*Data) float64 {
 	for _,d := range data {
 		// Only use records that were classified by at least one classifier
 		if d.oobAccumulator.Count() != 0 {
-			te.errorAccumulator.Add(d.output - d.oobAccumulator.Estimate())
+			estimate := d.oobAccumulator.Estimate()
+			te.errorAccumulator.Add(d.output - estimate)
+			if d.output != estimate {
+//				fmt.Fprintf(os.Stdout, "%g Misclassified as %g:\n", d.output, estimate)
+//				d.oobAccumulator.Dump(os.Stdout, 5)
+			}
 		}
 	}
 	return te.errorAccumulator.Estimate()

@@ -8,14 +8,6 @@ import (
 	"math/rand"
 )
 
-type Feature interface {
-	// compareTo() is only required to work for features of the same type
-	// e.g., continuous or categorical.
-	compareTo (f Feature) int
-}
-
-type FeatureType int
-
 // featureComponent structure is used for random subspace features
 // where the data is partitioned on a random linear combination of
 // elements of the feature vector.  
@@ -28,16 +20,6 @@ const (
 	CATEGORICAL FeatureType =  iota
 	CONTINUOUS
 )
-
-type Data struct {
-	continuousFeatures []float64
-	categoricalFeatures []int
-	output float64
-	outputCategories int // 0 means no output, 1 means continuous
-
-	oobAccumulator ErrorAccumulator
-}
-
 
 // DecisionFeatureValue is a type that is a function that returns the 
 // value of the abtract feature (e.g., a linear combination of other features)
@@ -57,26 +39,10 @@ func subspaceFeatureSelector (component []featureComponent) FeatureSelector {
 	}
 }
 
-type sortableData struct {
-	data []*Data
-	sortValue FeatureSelector
-}
-
-func (s sortableData) Len() int {
-	return len(s.data)
-}
-
-func (s sortableData) Less(i, j int) bool {
-	return s.sortValue(s.data[i].continuousFeatures) < s.sortValue(s.data[j].continuousFeatures)
-}
-
-func (s sortableData) Swap(i, j int) {
-	s.data[i],s.data[j] = s.data[j],s.data[i]
-}
-
 type SplitInfo struct {
 	splitValue float64
 	leftSplitMetric, rightSplitMetric float64
+	leftEstimate, rightEstimate float64
 	compositeSplitMetric float64
 	leftSplitSize, rightSplitSize int
 }
@@ -102,7 +68,9 @@ func continuousFeatureSplit (data []*Data, featureSelector FeatureSelector, left
 
 	splitInfo = SplitInfo {
 		// Initialize splitValue with the *output* estimate
-		splitValue: right.Estimate(),
+		splitValue: 0.0,
+		leftEstimate: left.Estimate(),
+		rightEstimate: right.Estimate(),
 		leftSplitMetric: 0,
 		rightSplitMetric: rightMetric,
 		compositeSplitMetric: rightMetric,
@@ -119,14 +87,16 @@ func continuousFeatureSplit (data []*Data, featureSelector FeatureSelector, left
 			leftCount := left.Count()
 			rightCount := right.Count()
 			error := (float64(leftCount)*leftMetric + float64(rightCount)*rightMetric)/float64(leftCount+rightCount)
-			if error < splitInfo.compositeSplitMetric {
+			if error < splitInfo.compositeSplitMetric && leftCount >0 && rightCount > 0 {
 				splitInfo = SplitInfo {
 					splitValue: fv,
+					leftEstimate: left.Estimate(),
+					rightEstimate: right.Estimate(),
 					leftSplitMetric: leftMetric,
 					rightSplitMetric: rightMetric,
 					compositeSplitMetric: error,
-					leftSplitSize: left.Count(),
-					rightSplitSize: right.Count() }
+					leftSplitSize: leftCount,
+					rightSplitSize: rightCount }
 			}
 		}
 		left.Add(row.output)
@@ -178,7 +148,7 @@ func NewTree (featuresToTest int, cfSplitter func ([]*Data, FeatureSelector) Spl
 }
 
 func (tree *Tree) Train(trainingSet[] *Data) {
-	tree.root = NewTreeNode(math.MaxFloat64)
+	tree.root = NewTreeNode(math.MaxFloat64,math.MaxFloat64)
 	tree.root.grow(trainingSet,
 		tree.featuresToTest,
 		tree.continuousFeatureSplit)
@@ -221,19 +191,22 @@ type treeNode struct {
 
 	// In a non-leaf node, value is the splitting value.  Values
 	// greater than or equal to the splitting value belong to the right
-	// subtree.  Others belong to the left subtree.  In a leaf
-	// node splitValue is the assigned label.
+	// subtree.  Others belong to the left subtree.
 	splitValue float64
+
+	// In a leaf node outputValue is the assigned label.  In a non-leaf node,
+	// It's an estimate if you stop at that node.
+	outputValue float64
 }
 
-func NewTreeNode (metric float64) *treeNode {
+func NewTreeNode (metric, defaultOutput  float64) *treeNode {
 	return &treeNode{
 		featureType: CONTINUOUS,
 		featureSelector: nil,
 		metric: metric,
+		outputValue: defaultOutput,
 		// initialization of splitValue is not very important as it is not used if featureIndex < 0
-		splitValue: math.MaxFloat64,
-	}
+		splitValue: math.MaxFloat64}
 }
 
 // splitData() splits "data" into a "left" and "right" portions based on "splitValue" and "splitFeatureIndex".
@@ -261,7 +234,7 @@ func splitData (data []*Data, splitValue float64, featureSelector FeatureSelecto
 func (tree *treeNode) dump(w io.Writer, index, depth int) {
 	indent := 4*depth + 1
 	if tree.featureSelector == nil {
-		fmt.Fprintf (w, "%*c %2d - Leaf node - output: %g; metric: %g\n", indent, ' ', index, tree.splitValue, tree.metric)
+		fmt.Fprintf (w, "%*c %2d - Leaf node - output: %g; metric: %g\n", indent, ' ', index, tree.outputValue, tree.metric)
 	} else {
 		fmt.Fprintf (w, "%*c %2d - Split on feature ??? at value %g; metric: %g\n", indent, ' ', index, tree.splitValue, tree.metric)
 
@@ -273,9 +246,18 @@ func (tree *treeNode) dump(w io.Writer, index, depth int) {
 	}
 }
 
-func randomSubspace(featureVectorSize int, size int) []featureComponent {
-	result := make([]featureComponent,size)
-	for i:=0; i<size; i++ {
+func randomSubspace(featureVectorSize int) []featureComponent {
+	componentDim := featureVectorSize
+	
+	for i:=0; i<200; i++ {
+		r := int(rand.Int31n(int32(featureVectorSize))) + 1
+		if r < componentDim {
+			componentDim = r
+		}
+	}
+
+	result := make([]featureComponent,componentDim)
+	for i:=0; i<componentDim; i++ {
 		result[i].index = int(rand.Int31n(int32(featureVectorSize)))
 		result[i].weight = rand.Float64()*2.0 - 1.0;
 	}
@@ -293,13 +275,12 @@ func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSp
 	var bestSplitInfo SplitInfo
 
 	for i:= 0; i<featuresToTest; i++ {
-//		n := int(rand.Int31n(int32(len(data[0].continuousFeatures))))
-//		featureSelector := featureSelectorFromIndex(n)
-		fc := randomSubspace(len(data[0].continuousFeatures), 5)
-		featureSelector := subspaceFeatureSelector(fc)
+		n := int(rand.Int31n(int32(len(data[0].continuousFeatures))))
+		featureSelector := featureSelectorFromIndex(n)
+//		fc := randomSubspace(len(data[0].continuousFeatures))
+//		featureSelector := subspaceFeatureSelector(fc)
 		candidateSplitInfo := continuousFeatureSplitter(data, featureSelector)
-		tree.splitValue = candidateSplitInfo.splitValue
-		if candidateSplitInfo.leftSplitSize != 0 && candidateSplitInfo.compositeSplitMetric < tree.metric {
+		if candidateSplitInfo.leftSplitSize > 5 && candidateSplitInfo.compositeSplitMetric < tree.metric {
 			bestSplitInfo = candidateSplitInfo
 			tree.metric = candidateSplitInfo.compositeSplitMetric
 			tree.featureSelector = featureSelector
@@ -314,8 +295,8 @@ func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSp
 		
 		splitData(data, tree.splitValue, tree.featureSelector, leftData, rightData)
 		
-		tree.left = NewTreeNode(bestSplitInfo.leftSplitMetric)
-		tree.right = NewTreeNode(bestSplitInfo.rightSplitMetric)
+		tree.left = NewTreeNode(bestSplitInfo.leftSplitMetric,bestSplitInfo.leftEstimate)
+		tree.right = NewTreeNode(bestSplitInfo.rightSplitMetric,bestSplitInfo.rightEstimate)
 
 		tree.left.grow(leftData, featuresToTest, continuousFeatureSplitter)
 		tree.right.grow(rightData, featuresToTest, continuousFeatureSplitter)
@@ -326,7 +307,7 @@ func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSp
 func (tree *treeNode) classify(feature []float64) float64 {
 	// Leaf node?
 	if tree.featureSelector == nil {
-		return tree.splitValue
+		return tree.outputValue
 	} else {
 		switch  {
 		case tree.featureSelector(feature) < tree.splitValue:

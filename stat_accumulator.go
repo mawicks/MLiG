@@ -1,6 +1,10 @@
 package ML
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"io"
+)
 
 // A new StatAccumulator may be declared without initialization.
 // The Go default initialization is correct.
@@ -55,4 +59,7 @@ func (sa *StatAccumulator) Clear() {
 	sa.sumOfSquares = 0.0
 }
 
+func (sa *StatAccumulator) Dump(w io.Writer, indent int) {
+	fmt.Fprintf (w, "%*scount: %d, sum(x): %g, sum(x^2): %g\n", indent, "", sa.sum, sa.sumOfSquares)
+}
 

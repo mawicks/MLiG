@@ -3,6 +3,7 @@ package ML
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math"
 )
 
@@ -67,3 +68,10 @@ func (ea *EntropyAccumulator) Clear() {
 	ea.totalCount = 0
 }
 
+func (ea *EntropyAccumulator) Dump(w io.Writer, indent int) {
+	fmt.Fprintf (w, "%*scount: %d ", indent, "", ea.totalCount)
+	for i,c := range ea.counts {
+		fmt.Fprintf (w, "  %d:%d", i, c)
+	}
+	fmt.Fprintf(w, "\n")
+}

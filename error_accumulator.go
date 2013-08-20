@@ -1,5 +1,10 @@
 package ML
 
+import (
+	"fmt"
+	"io"
+)
+
 type errorAccumulator struct {
 	totalCount int
 	errorCount int
@@ -28,6 +33,9 @@ func (ea *errorAccumulator) Clear() {
 	ea.totalCount = 0
 }
 
+func (ea *errorAccumulator) Dump(w io.Writer, indent int) {
+	fmt.Fprintf (w, "%*scount: %d, errorCount: %d\n", indent, "", ea.totalCount, ea.errorCount)
+}
 
 
 
