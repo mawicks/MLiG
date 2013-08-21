@@ -63,19 +63,19 @@ func TestImageFeatures (t *testing.T) {
 	img.Set(4,2,color.Gray{255})
 	img.Set(4,3,color.Gray{255})
 
-	gf := GrayWithFeatures{img}
+	gf := GrayWithFeatures{img,0,0.0}
 	testImageEdges(t, "Image edges", gf, 4.0/3.0, 4.0/3.0)
 	testImageCentroid(t, "Image centroid", gf, 2.2, 2.8)
 	testImageMoments(t, "Image moments", gf, math.Sqrt(0.56), math.Sqrt(1.36), 0.64/math.Sqrt(0.56*1.36))
 
 	subimage := img.SubImage(image.Rect(1,1,3,3)).(*image.Gray)
-	gf = GrayWithFeatures{subimage}
+	gf = GrayWithFeatures{subimage,0,0.0}
 	testImageEdges(t, "Image edges", gf, 1.0, 1.0)
 	testImageCentroid(t, "Image centroid", gf, 0.5, 0.5)
 	testImageMoments(t, "Image moments", gf, 0.5, 0.5, 1.0)
 
 	subimage = img.SubImage(image.Rect(3,3,4,4)).(*image.Gray)
-	gf = GrayWithFeatures{subimage}
+	gf = GrayWithFeatures{subimage,0,0.0}
 	testImageEdges(t, "Image edges", gf, 0.0, 0.0)
 	testImageCentroid(t, "Image centroid", gf, 0.0, 0.0)
 	testImageMoments(t, "Image moments", gf, 0.0, 0.0, 0.0)

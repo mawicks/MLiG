@@ -7,6 +7,8 @@ import (
 
 type GrayWithFeatures struct {
 	*image.Gray
+	memoSeed int32
+	memoValue float64
 }
 
 type featureSums struct {
@@ -102,4 +104,74 @@ func (gwf *GrayWithFeatures) Edges() (vertical, horizontal float64) {
 	vertical = float64(fs.xEdges)/float64(fs.rows)/float64(255.0)
 	horizontal = float64(fs.yEdges)/float64(fs.cols)/float64(255.0)
 	return
+}
+
+// randomRectangle() returns a random rectangle obtained from the
+// random seed "s".  As entropy from "s" is consumed to produce a
+// random rectangle, it may be used to generate additional random
+// selections.  This entropy is removed.  The returned "s" is a
+// revised "s" with all consumed entropy removed.
+
+func randomRectangle (s int32, dx, dy int) (image.Rectangle,int32) {
+	// Choose random window
+	x1 := int(s % int32(dx))
+	
+	// As bits of "s" are consumed, remove them from s.
+	s /= int32(dx)
+	
+	y1 := int(s % int32(dy))
+	s /= int32(dy)
+	
+	x2 := x1 + 1 + int(s % int32(dx-x1))
+	s /= int32(dx-x1)
+	
+	y2 := y1 + 1 + int(s % int32(dy-y1))
+	s /= int32(dy-y1)
+
+	return image.Rect(x1, x2, y1, y2), s
+}
+
+func (gwf *GrayWithFeatures) RandomFeature(s int32) float64 {
+	// Select a random feature assuming "s" is a random 32-bit
+	// integer.  The same "s" should *always* produce the same
+	// result on the same image.  The same "s" should always
+	// select the same "feature" (same window, same attribute,
+	// etc.)  regardless of the data values.
+
+	// Use memoized lookups in case called with same "s" is used
+	// repeatedly (e.g., in sorts).
+
+	if s == gwf.memoSeed {
+		return gwf.memoValue
+	}
+	
+	dx := gwf.Rect.Dx()
+	dy := gwf.Rect.Dy()
+
+	var subRect image.Rectangle
+
+	if dx != 0 && dy != 0 {
+		gwf.memoSeed = s
+		subRect,s = randomRectangle (s, dx, dy)
+
+		subimage := GrayWithFeatures{gwf.SubImage (subRect).(*image.Gray),0,0.0}
+		
+		switch (s%7) {
+		case 0:
+			gwf.memoValue,_ = subimage.Centroid()
+		case 1:
+			_,gwf.memoValue = subimage.Centroid()
+		case 2:
+			gwf.memoValue,_,_ = subimage.Moments()
+		case 3:
+			_,gwf.memoValue,_ = subimage.Moments()
+		case 4:
+			_,_,gwf.memoValue = subimage.Moments()
+		case 5:
+			gwf.memoValue,_ = subimage.Edges()
+		case 6:
+			_,gwf.memoValue = subimage.Edges()
+		}
+	}
+	return gwf.memoValue
 }
