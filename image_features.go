@@ -1,6 +1,7 @@
 package ML
 
 import (
+	"fmt"
 	"image"
 	"math"
 )
@@ -26,8 +27,8 @@ func iAbs(i int32) int32 {
 }	
 
 func (gwf *GrayWithFeatures) featureSums() (fs featureSums) {
-	fs.rows = gwf.Rect.Dx()
-	fs.cols = gwf.Rect.Dy()
+	fs.rows = gwf.Rect.Dy()
+	fs.cols = gwf.Rect.Dx()
 
 	// Work directly with pix array for performance reasons
 	offset := 0
@@ -37,11 +38,11 @@ func (gwf *GrayWithFeatures) featureSums() (fs featureSums) {
 			index := offset + j
 			pix := gwf.Pix[index]
 			fs.mass += int32(pix)
-			fs.xMass += int32(i)*int32(pix)
-			fs.yMass += int32(j)*int32(pix)
-			fs.x2Mass += int64(int32(i*i)*int32(pix))
-			fs.y2Mass += int64(int32(j*j)*int32(pix))
-			fs.xyMass += int64(int32(i*j)*int32(pix))
+			fs.xMass += int32(j)*int32(pix)
+			fs.yMass += int32(i)*int32(pix)
+			fs.x2Mass += int64(int32(j*j)*int32(pix))
+			fs.y2Mass += int64(int32(i*i)*int32(pix))
+			fs.xyMass += int64(int32(j*i)*int32(pix))
 			fs.xEdges += iAbs(int32(pix)-int32(lastPix))
 			lastPix = pix
 		}
@@ -66,6 +67,11 @@ func centroidFromSums(fs featureSums) (x, y float64) {
 		x,y = float64(fs.xMass)/float64(fs.mass),float64(fs.yMass)/float64(fs.mass)
 	}
 	return
+}
+
+func (gwf *GrayWithFeatures) Mass() float64 {
+	fs := gwf.featureSums()
+	return float64(fs.mass)
 }
 
 func (gwf *GrayWithFeatures) Centroid () (x,y float64) {
@@ -101,6 +107,13 @@ func (gwf *GrayWithFeatures) Moments () (rxx, ryy, rxy float64) {
 // For horizontal edges the average is taken over all columns.
 func (gwf *GrayWithFeatures) Edges() (vertical, horizontal float64) {
 	fs := gwf.featureSums()
+	if fs.rows == 0 || fs.cols == 0 {
+		fmt.Printf ("gwf=%v\n", gwf)
+		fmt.Printf ("gwf=%v\n", *gwf)
+		fmt.Printf ("gwf.Gray=%v\n", gwf.Gray)
+		fmt.Printf ("gwf.Gray=%v\n", *gwf.Gray)
+		panic ("fs.rows or fs.cols is zero in GrayWithFeatures.Edges()")
+	}
 	vertical = float64(fs.xEdges)/float64(fs.rows)/float64(255.0)
 	horizontal = float64(fs.yEdges)/float64(fs.cols)/float64(255.0)
 	return
@@ -128,7 +141,10 @@ func randomRectangle (s int32, dx, dy int) (image.Rectangle,int32) {
 	y2 := y1 + 1 + int(s % int32(dy-y1))
 	s /= int32(dy-y1)
 
-	return image.Rect(x1, x2, y1, y2), s
+	if x1 == x2 || y1 == y2 {
+		fmt.Printf ("randomRectangle(): x1=%d x2=%d y1=%d y2=%d\n", x1, x2, y1, y2)
+	}
+	return image.Rect(x1, y1, x2, y2), s
 }
 
 func (gwf *GrayWithFeatures) RandomFeature(s int32) float64 {
@@ -153,23 +169,29 @@ func (gwf *GrayWithFeatures) RandomFeature(s int32) float64 {
 	if dx != 0 && dy != 0 {
 		gwf.memoSeed = s
 		subRect,s = randomRectangle (s, dx, dy)
-
-		subimage := GrayWithFeatures{gwf.SubImage (subRect).(*image.Gray),0,0.0}
+		si := gwf.SubImage(subRect).(*image.Gray)
+		subimage := &GrayWithFeatures{si,0,0.0}
 		
-		switch (s%7) {
+		switch (s%8) {
 		case 0:
-			gwf.memoValue,_ = subimage.Centroid()
+			gwf.memoValue = subimage.Mass()
 		case 1:
-			_,gwf.memoValue = subimage.Centroid()
+			gwf.memoValue,_ = subimage.Centroid()
 		case 2:
-			gwf.memoValue,_,_ = subimage.Moments()
+			_,gwf.memoValue = subimage.Centroid()
 		case 3:
-			_,gwf.memoValue,_ = subimage.Moments()
+			gwf.memoValue,_,_ = subimage.Moments()
 		case 4:
-			_,_,gwf.memoValue = subimage.Moments()
+			_,gwf.memoValue,_ = subimage.Moments()
 		case 5:
-			gwf.memoValue,_ = subimage.Edges()
+			_,_,gwf.memoValue = subimage.Moments()
 		case 6:
+			gwf.memoValue,_ = subimage.Edges()
+		case 7:
+			if subimage.Rect.Dx() == 0 || subimage.Rect.Dy() == 0 {
+				fmt.Printf ("subrect = %v\n", subRect)
+				panic ("fs.rows or fs.cols is zero in RandomFeature()\n")
+			}
 			_,gwf.memoValue = subimage.Edges()
 		}
 	}

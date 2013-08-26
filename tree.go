@@ -21,24 +21,6 @@ const (
 	CONTINUOUS
 )
 
-// DecisionFeatureValue is a type that is a function that returns the 
-// value of the abtract feature (e.g., a linear combination of other features)
-// used to find the decision boundary.
-type FeatureSelector func([]float64) float64
-
-func featureSelectorFromIndex (i int) FeatureSelector {
-	return func(feature[] float64) float64 { return feature[i] }
-}
-
-func subspaceFeatureSelector (component []featureComponent) FeatureSelector {
-	return func(feature[] float64) (result float64) { 
-		for _,fc := range component {
-			result += fc.weight * feature[fc.index]
-		}
-		return result
-	}
-}
-
 type SplitInfo struct {
 	splitValue float64
 	leftSplitMetric, rightSplitMetric float64
@@ -53,11 +35,11 @@ type SplitInfo struct {
 // split, the left and right partition metric after the split, and
 // the size of the left split.  The returned size will be zero if the
 // error cannot be reduced.
-func continuousFeatureSplit (data []*Data, featureSelector FeatureSelector, left, right CVAccumulator) (splitInfo SplitInfo) {
+func continuousFeatureSplit (data []*Data, seed int32, left, right CVAccumulator) (splitInfo SplitInfo) {
 	left.Clear()
 	right.Clear()
 	
-	s := sortableData{data, featureSelector}
+	s := sortableData{data, seed}
 	sort.Sort(s)
 
 	for _,row := range data {
@@ -80,7 +62,7 @@ func continuousFeatureSplit (data []*Data, featureSelector FeatureSelector, left
 	previousSplitCandidate := - math.MaxFloat64
 
 	for i,row := range data {
-		fv := featureSelector(row.continuousFeatures)
+		fv := row.featureSelector(seed)
 		if (i != 0 && fv != previousSplitCandidate) {
 			leftMetric := left.Metric()
 			rightMetric := right.Metric()
@@ -112,24 +94,24 @@ func continuousFeatureSplit (data []*Data, featureSelector FeatureSelector, left
 // split, the left and right mean-squared error after the split, and
 // the size of the left split.  The returned size will be zero if the
 // error cannot be reduced.
-func continuousFeatureMSESplit (data[] *Data, featureSelector FeatureSelector) SplitInfo {
+func continuousFeatureMSESplit (data[] *Data, seed int32) SplitInfo {
 	var (
 		left, right StatAccumulator
 	)
-	return continuousFeatureSplit (data, featureSelector, &left, &right)
+	return continuousFeatureSplit (data, seed, &left, &right)
 }
 
 // Split the data with a categorical output variable along the feature
 // axis.  Return the feature value for the split, the entropies of the
 // left and right splits, the size of the left split.  The returned
 // size will be zero if the entropy cannot be reduced.
-func continuousFeatureEntropySplitter (categoryRange int) func ([]*Data, FeatureSelector) SplitInfo {
-	return func (data []*Data, featureSelector FeatureSelector) SplitInfo {
+func continuousFeatureEntropySplitter (categoryRange int) func ([]*Data, int32) SplitInfo {
+	return func (data []*Data, seed int32) SplitInfo {
 		left := NewEntropyAccumulator(categoryRange)
 		right := NewEntropyAccumulator(categoryRange)
 		
 		return continuousFeatureSplit (data, 
-			featureSelector, left, right)
+			seed, left, right)
 	}
 }
 
@@ -137,14 +119,16 @@ type Tree struct {
 	root *treeNode
 	featuresToTest int
 	randomSubspace []featureComponent
-	continuousFeatureSplit func ([]*Data, FeatureSelector) SplitInfo
+	continuousFeatureSplit func ([]*Data, int32) SplitInfo
+	errorAccumulator ErrorAccumulator
 }
 
-func NewTree (featuresToTest int, cfSplitter func ([]*Data, FeatureSelector) SplitInfo) *Tree {
+func NewTree (featuresToTest int, cfSplitter func ([]*Data, int32) SplitInfo) *Tree {
 	return &Tree{
 		root: nil,
 		featuresToTest: featuresToTest,
-		continuousFeatureSplit: cfSplitter}
+		continuousFeatureSplit: cfSplitter,
+		errorAccumulator: &errorAccumulator{}}
 }
 
 func (tree *Tree) Train(trainingSet[] *Data) {
@@ -154,8 +138,16 @@ func (tree *Tree) Train(trainingSet[] *Data) {
 		tree.continuousFeatureSplit)
 }
 
-func (tree *Tree) Classify(feature []float64) float64 {
-	return tree.root.classify(feature)
+func (tree *Tree) Classify(featureSelector func(int32) float64) float64 {
+	return tree.root.classify(featureSelector)
+}
+
+func (tree *Tree) Add(error float64) {
+	tree.errorAccumulator.Add(error)
+}
+
+func (tree *Tree) Estimate() float64 {
+	return tree.errorAccumulator.Estimate()
 }
 
 func (tree *Tree) Dump(w io.Writer) {
@@ -187,7 +179,7 @@ type treeNode struct {
 	// pointers are nil.  In a non-leaf node, featureIndex is a
 	// valid function and both the left and right partition pointers
 	// are non-nil.
-	featureSelector FeatureSelector
+	seed int32
 
 	// In a non-leaf node, value is the splitting value.  Values
 	// greater than or equal to the splitting value belong to the right
@@ -202,7 +194,7 @@ type treeNode struct {
 func NewTreeNode (metric, defaultOutput  float64) *treeNode {
 	return &treeNode{
 		featureType: CONTINUOUS,
-		featureSelector: nil,
+		seed: -1,
 		metric: metric,
 		outputValue: defaultOutput,
 		// initialization of splitValue is not very important as it is not used if featureIndex < 0
@@ -210,22 +202,31 @@ func NewTreeNode (metric, defaultOutput  float64) *treeNode {
 }
 
 // splitData() splits "data" into a "left" and "right" portions based on "splitValue" and "splitFeatureIndex".
-func splitData (data []*Data, splitValue float64, featureSelector FeatureSelector, left[]*Data, right[]*Data) {
+func splitData (data []*Data, splitValue float64, seed int32, left[]*Data, right[]*Data) {
 	leftCount := 0
 	leftSize := len(left)
 	rightCount := 0
 	rightSize := len(right)
 	for _,dp := range data {
-		if featureSelector(dp.continuousFeatures) < splitValue {
+		if dp.featureSelector(seed) < splitValue {
+			if (leftCount == leftSize) {
+				fmt.Printf("leftSize=%d; rightSize=%d; leftCount=%d; rightCount=%d\n", leftSize, rightSize, leftCount, rightCount)
+				fmt.Printf("splitValue=%g, feature=%g\n", splitValue, dp.featureSelector(seed))
+				panic ("Split sizes are not as expected in splitData()")
+			}
 			left[leftCount] = dp
 			leftCount += 1
 		} else {
+			if (rightCount == rightSize) {
+				fmt.Printf("leftSize=%d; rightSize=%d; leftCount=%d; rightCount=%d\n", leftSize, rightSize, leftCount, rightCount)
+				fmt.Printf("splitValue=%g, feature=%g\n", splitValue, dp.featureSelector(seed))
+				panic ("Split sizes are not as expected in splitData()")
+			}
 			right[rightCount] = dp
 			rightCount += 1
 		}
 	}
 	if leftSize != leftCount  || rightSize != rightCount {
-		panic ("Split sizes are not as expected in splitData()")
 	}
 }
 
@@ -233,7 +234,7 @@ func splitData (data []*Data, splitValue float64, featureSelector FeatureSelecto
 // is the depth of this node in the tree.
 func (tree *treeNode) dump(w io.Writer, index, depth int) {
 	indent := 4*depth + 1
-	if tree.featureSelector == nil {
+	if tree.seed == -1 {
 		fmt.Fprintf (w, "%*c %2d - Leaf node - output: %g; metric: %g\n", indent, ' ', index, tree.outputValue, tree.metric)
 	} else {
 		fmt.Fprintf (w, "%*c %2d - Split on feature ??? at value %g; metric: %g\n", indent, ' ', index, tree.splitValue, tree.metric)
@@ -267,7 +268,7 @@ func randomSubspace(featureVectorSize int) []featureComponent {
 // grow() grows the tree based on the test set "data."  "featureSelector" is a function
 // of a feature record returning the abstract feature value.  continuousFeatureSplit
 // is the splitting function (e.g.,  MSE Error or entropy).
-func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSplitter func ([]*Data, FeatureSelector) SplitInfo) {
+func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSplitter func ([]*Data, int32) SplitInfo) {
 	if (len(data) == 0) {
 		return
 	}
@@ -275,25 +276,23 @@ func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSp
 	var bestSplitInfo SplitInfo
 
 	for i:= 0; i<featuresToTest; i++ {
-		n := int(rand.Int31n(int32(len(data[0].continuousFeatures))))
-		featureSelector := featureSelectorFromIndex(n)
-//		fc := randomSubspace(len(data[0].continuousFeatures))
-//		featureSelector := subspaceFeatureSelector(fc)
-		candidateSplitInfo := continuousFeatureSplitter(data, featureSelector)
+//		candidateSeed := rand.Int31n(int32(len(data[0].continuousFeatures)))
+		candidateSeed := rand.Int31()
+		candidateSplitInfo := continuousFeatureSplitter(data, candidateSeed)
 		if candidateSplitInfo.leftSplitSize > 0 && candidateSplitInfo.compositeSplitMetric < tree.metric {
 			bestSplitInfo = candidateSplitInfo
 			tree.metric = candidateSplitInfo.compositeSplitMetric
-			tree.featureSelector = featureSelector
+			tree.seed = candidateSeed
 		}
 	}
 
-	if tree.featureSelector != nil {
+	if tree.seed != -1 {
 		tree.splitValue = bestSplitInfo.splitValue
 		
 		leftData := make([]*Data, bestSplitInfo.leftSplitSize)
 		rightData := make([]*Data, bestSplitInfo.rightSplitSize)
 		
-		splitData(data, tree.splitValue, tree.featureSelector, leftData, rightData)
+		splitData(data, tree.splitValue, tree.seed, leftData, rightData)
 		
 		tree.left = NewTreeNode(bestSplitInfo.leftSplitMetric,bestSplitInfo.leftEstimate)
 		tree.right = NewTreeNode(bestSplitInfo.rightSplitMetric,bestSplitInfo.rightEstimate)
@@ -304,22 +303,22 @@ func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSp
 }
 
 // Classify (or predict) the passed feature vector.
-func (tree *treeNode) classify(feature []float64) float64 {
+func (tree *treeNode) classify(featureSelector func(int32) float64) float64 {
 	// Leaf node?
-	if tree.featureSelector == nil {
+	if tree.seed == -1 {
 		return tree.outputValue
 	} else {
 		switch  {
-		case tree.featureSelector(feature) < tree.splitValue:
-			return tree.left.classify(feature)
+		case featureSelector(tree.seed) < tree.splitValue:
+			return tree.left.classify(featureSelector)
 		default:
-			return tree.right.classify(feature)
+			return tree.right.classify(featureSelector)
 		}
 	}
 }
 
 func (tree *treeNode) size() int {
-	if tree.featureSelector == nil {
+	if tree.seed == -1 {
 		return 1
 	} else {
 		return tree.left.size() + tree.right.size()
@@ -328,7 +327,7 @@ func (tree *treeNode) size() int {
 
 func (tree *treeNode) depth() int {
 	result := 0
-	if tree.featureSelector == nil {
+	if tree.seed == -1 {
 		result = 1
 	} else {
 		result = 1 + tree.left.depth()

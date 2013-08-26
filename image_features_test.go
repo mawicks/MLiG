@@ -29,8 +29,8 @@ func testImageEdges (t *testing.T, msg string, im GrayWithFeatures, vertical, ho
 	if (!aboutEqual(v, vertical)) {
 		t.Errorf (fmt.Sprintf("%s: expected vertical count of %g, got %g", msg, vertical, v))
 	}
-	if (!aboutEqual(h, vertical)) {
-		t.Errorf (fmt.Sprintf("%s: expected horizontal count of %g, got %g", msg, horizontal, v))
+	if (!aboutEqual(h, horizontal)) {
+		t.Errorf (fmt.Sprintf("%s: expected horizontal count of %g, got %g", msg, horizontal, h))
 	}
 }
 
@@ -48,38 +48,50 @@ func testImageMoments (t *testing.T, msg string, im GrayWithFeatures, rxx, ryy, 
 }
 
 func TestImageFeatures (t *testing.T) {
-	//    0 1 2 3 4 5
-        // 0: _ _ _ _ _ _
-        // 1: _ X _ _ _ _
-        // 2: _ _ X _ _ _
-        // 3: _ _ _ X _ _
-        // 4: _ _ X X _ _
-        // 5: _ _ _ _ _ _
+	//    0 1 2 3 4 5 6 7
+        // 0: _ _ _ _ _ _ _ _
+        // 1: _ X _ _ _ _ _ _
+        // 2: _ _ X _ _ _ _ _
+        // 3: _ _ _ X _ _ _ _
+        // 4: _ _ X X _ _ _ _
+        // 5: _ _ _ _ _ _ _ _
 
-	img := image.NewGray(image.Rect(0, 0, 6, 6))
+	img := image.NewGray(image.Rect(0, 0, 8, 6))
+
+	for i:=0; i<6; i++ {
+		for j:=0; j<6; j++ {
+			img.Set(j,i,color.Gray{uint8(0)})
+//			img.Set(j,i,color.Gray{uint8(i*10+j)})
+		}
+	}
+	fmt.Printf ("Full original image: %v\n", img)
+
 	img.Set(1,1,color.Gray{255})
 	img.Set(2,2,color.Gray{255})
 	img.Set(3,3,color.Gray{255})
-	img.Set(4,2,color.Gray{255})
-	img.Set(4,3,color.Gray{255})
+	img.Set(2,4,color.Gray{255})
+	img.Set(3,4,color.Gray{255})
 
 	gf := GrayWithFeatures{img,0,0.0}
-	testImageEdges(t, "Image edges", gf, 4.0/3.0, 4.0/3.0)
+	testImageEdges(t, "Image edges", gf, 4.0/3.0, 1.0)
 	testImageCentroid(t, "Image centroid", gf, 2.2, 2.8)
 	testImageMoments(t, "Image moments", gf, math.Sqrt(0.56), math.Sqrt(1.36), 0.64/math.Sqrt(0.56*1.36))
 
+	fmt.Printf ("random feature(%d)=%g\n", 1234, gf.RandomFeature(1234))
+	fmt.Printf ("random feature(%d)=%g\n", 4321, gf.RandomFeature(4321))
+	fmt.Printf ("random feature(%d)=%g\n", 7531, gf.RandomFeature(7531))
+
 	subimage := img.SubImage(image.Rect(1,1,3,3)).(*image.Gray)
-	gf = GrayWithFeatures{subimage,0,0.0}
-	testImageEdges(t, "Image edges", gf, 1.0, 1.0)
-	testImageCentroid(t, "Image centroid", gf, 0.5, 0.5)
-	testImageMoments(t, "Image moments", gf, 0.5, 0.5, 1.0)
+	fmt.Printf ("subimage: %v\n", subimage)
+
+	gfsi := GrayWithFeatures{subimage,0,0.0}
+	testImageEdges(t, "Image edge (1st subimage)", gfsi, 1.0, 1.0)
+	testImageCentroid(t, "Image centroid (1st subimage)", gfsi, 0.5, 0.5)
+	testImageMoments(t, "Image moments (1st subimage)", gfsi, 0.5, 0.5, 1.0)
 
 	subimage = img.SubImage(image.Rect(3,3,4,4)).(*image.Gray)
-	gf = GrayWithFeatures{subimage,0,0.0}
-	testImageEdges(t, "Image edges", gf, 0.0, 0.0)
-	testImageCentroid(t, "Image centroid", gf, 0.0, 0.0)
-	testImageMoments(t, "Image moments", gf, 0.0, 0.0, 0.0)
+	gfsi = GrayWithFeatures{subimage,0,0.0}
+	testImageEdges(t, "Image edges (2nd subimage)", gfsi, 0.0, 0.0)
+	testImageCentroid(t, "Image centroid (2nd subimage)", gfsi, 0.0, 0.0)
+	testImageMoments(t, "Image moments (2nd subimage)", gfsi, 0.0, 0.0, 0.0)
 }
-
-
-

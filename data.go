@@ -14,6 +14,7 @@ type Data struct {
 	output float64
 	outputCategories int // 0 means no output, 1 means continuous
 
+	featureSelector func (int32) float64
 	oobAccumulator ErrorAccumulator
 }
 
@@ -27,7 +28,7 @@ func (d *Data) Features() []float64 {
 
 type sortableData struct {
 	data []*Data
-	sortValue FeatureSelector
+	seed int32
 }
 
 func (s sortableData) Len() int {
@@ -35,10 +36,20 @@ func (s sortableData) Len() int {
 }
 
 func (s sortableData) Less(i, j int) bool {
-	return s.sortValue(s.data[i].continuousFeatures) < s.sortValue(s.data[j].continuousFeatures)
+	return s.data[i].featureSelector(s.seed) < s.data[j].featureSelector(s.seed)
 }
 
 func (s sortableData) Swap(i, j int) {
 	s.data[i],s.data[j] = s.data[j],s.data[i]
 }
+
+
+
+
+
+
+
+
+
+
 
