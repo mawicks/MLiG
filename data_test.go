@@ -64,8 +64,8 @@ func TestDigitData (t *testing.T) {
 	f := continuousFeatureEntropySplitter (digitData[0].outputCategories)
 	ensemble := NewEnsemble()
 
-	for i:=0; i<1000; i++ {
-		newTree := NewTree(30, f)
+	for i:=0; i<25; i++ {
+		newTree := NewTree(10, f)
 		TrainBag(digitData, newTree)
 		ensemble.AddClassifier(newTree)
 		fmt.Printf ("Tree %d stats - size: %d  depth: %d performance: %g\n", i, newTree.Size(), newTree.Depth(), newTree.Estimate())
@@ -74,4 +74,45 @@ func TestDigitData (t *testing.T) {
 			fmt.Printf ("Trees: %d: ensemble error=%g\n", i, mserror)
 		}
 	}		
+
+	boostingDigitData := make([]*Data,len(digitData))
+	for i,_ := range digitData {
+		data := *digitData[i]
+		data.outputCategories = 11
+		data.oobAccumulator = NewEntropyAccumulator(data.outputCategories)
+		if (data.oobAccumulator.Estimate() == data.output) {
+			data.output = 10 // Magic value!
+		}
+		boostingDigitData[i] = &data
+	}
+
+	g := continuousFeatureEntropySplitter (boostingDigitData[0].outputCategories)
+	boostingEnsemble := NewEnsemble()
+	for i:=0; i<25; i++ {
+		newTree := NewTree(10, g)
+		TrainBag(boostingDigitData, newTree)
+		boostingEnsemble.AddClassifier(newTree)
+		fmt.Printf ("Tree %d stats - size: %d  depth: %d performance: %g\n", i, newTree.Size(), newTree.Depth(), newTree.Estimate())
+		mserror := ensemble.Error(boostingDigitData)
+		if i % 1 == 0 {
+			fmt.Printf ("Trees: %d: ensemble error=%g\n", i, mserror)
+		}
+	}		
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

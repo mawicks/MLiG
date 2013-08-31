@@ -64,13 +64,14 @@ func TestImageFeatures (t *testing.T) {
 //			img.Set(j,i,color.Gray{uint8(i*10+j)})
 		}
 	}
-	fmt.Printf ("Full original image: %v\n", img)
 
 	img.Set(1,1,color.Gray{255})
 	img.Set(2,2,color.Gray{255})
 	img.Set(3,3,color.Gray{255})
 	img.Set(2,4,color.Gray{255})
 	img.Set(3,4,color.Gray{255})
+
+	fmt.Printf ("Full original image: %v\n", img)
 
 	gf := GrayWithFeatures{img,0,0.0}
 	testImageEdges(t, "Image edges", gf, 4.0/3.0, 1.0)

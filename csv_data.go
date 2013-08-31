@@ -85,6 +85,7 @@ func CSVData(legend string, filename string, outputCategories, skip int) []*Data
 			continuousFeatures: features,
 			categoricalFeatures: nil,
 			output: output,
+			originalOutput: output,
 			outputCategories: outputCategories,
 			oobAccumulator: errorAccumulator})
 	}

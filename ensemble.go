@@ -1,8 +1,8 @@
 package ML
 
 import (
-//	"fmt"
-//	"os"
+	"fmt"
+	"os"
 )
 
 type Ensemble struct {
@@ -36,6 +36,10 @@ func TrainBag (data[]*Data, classifier Classifier) {
 		prediction := classifier.Classify(d.featureSelector)
 		d.oobAccumulator.Add (prediction)
 		classifier.Add (d.output - prediction)
+		if (d.output != d.oobAccumulator.Estimate()) {
+			fmt.Printf ("Prediction: %g; output: %g; Original output: %g: ", d.oobAccumulator.Estimate(), d.output, d.originalOutput)
+			d.oobAccumulator.Dump(os.Stdout,5)
+		}
 	}
 }
 

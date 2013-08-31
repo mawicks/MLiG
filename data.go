@@ -11,6 +11,7 @@ type FeatureType int
 type Data struct {
 	continuousFeatures []float64
 	categoricalFeatures []int
+	originalOutput float64
 	output float64
 	outputCategories int // 0 means no output, 1 means continuous
 
