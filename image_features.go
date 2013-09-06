@@ -6,10 +6,15 @@ import (
 	"math"
 )
 
+type RandomFeatureSelector interface {
+	RandomFeature(s int32) float64
+}
+
 type GrayWithFeatures struct {
 	*image.Gray
 	memoSeed int32
 	memoValue float64
+	randomFeatureSelector RandomFeatureSelector
 }
 
 type featureSums struct {
@@ -170,7 +175,7 @@ func (gwf *GrayWithFeatures) RandomFeature(s int32) float64 {
 		gwf.memoSeed = s
 		subRect,s = randomRectangle (s, dx, dy)
 		si := gwf.SubImage(subRect).(*image.Gray)
-		subimage := &GrayWithFeatures{si,0,0.0}
+		subimage := &GrayWithFeatures{si,0,0.0,nil}
 		
 		switch (s%8) {
 		case 0:

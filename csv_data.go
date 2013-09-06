@@ -21,6 +21,7 @@ func fieldTypeCount (legend string, c rune) (result int) {
 // Each character represent a single field as follows:
 // i - ignored field
 // f - feature (continuous-valued or categorical)
+// k - key (string)
 // r - regression output
 // c - categorical output
 
@@ -38,7 +39,15 @@ func CSVData(legend string, filename string, outputCategories, skip int) []*Data
 	csvReader := csv.NewReader(file)
 
 	var fields []string
+	var key string
+
+	recordCount := 0
 	for fields,err = csvReader.Read(); err==nil; fields,err = csvReader.Read() {
+		recordCount += 1
+		// Default key is the record number
+		// Any field may be used as the key by using the "k" indicator in legend.
+		key = strconv.FormatInt(int64(recordCount),10)
+		
 		if len(fields) != len(legend) {
 			panic (fmt.Sprintf("Wrong number of fields: got %d expected %d", len(fields), len(legend)))
 		}
@@ -46,24 +55,27 @@ func CSVData(legend string, filename string, outputCategories, skip int) []*Data
 			skip--
 			continue
 		}
+		
 
 		features := make([]float64,fieldTypeCount(legend, 'f'))
 		featureCount := 0
 		for i,c := range legend {
 			switch c {
-			case 'f':
+			case 'k':	// Key
+				key = fields[i]
+			case 'f':	// Feature
 				features[featureCount],err = strconv.ParseFloat(fields[i],64)
 				if err!=nil {
 					panic (fmt.Sprintf("Numeric value expected: %s", fields[i]))
 				}
 				featureCount += 1
-			case 'i':
-			case 'r':
+			case 'i':	// Ignored
+			case 'r':	// Regression output
 				output,err = strconv.ParseFloat(fields[i],64)
 				if err!=nil {
 					panic (fmt.Sprintf("Numeric value expected: %s", fields[i]))
 				}
-			case 'c':
+			case 'c':	// Categorical output
 				output,err = strconv.ParseFloat(fields[i],64)
 				if err!=nil {
 					panic (fmt.Sprintf("Numeric value expected: %s", fields[i]))
@@ -82,6 +94,7 @@ func CSVData(legend string, filename string, outputCategories, skip int) []*Data
 		}
 		
 		result = append(result, &Data {
+			key: key,
 			continuousFeatures: features,
 			categoricalFeatures: nil,
 			output: output,

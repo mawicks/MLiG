@@ -9,6 +9,7 @@ type Feature interface {
 type FeatureType int
 
 type Data struct {
+	key string
 	continuousFeatures []float64
 	categoricalFeatures []int
 	output float64

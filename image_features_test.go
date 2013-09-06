@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"os"
 	"testing"
 )
 
@@ -64,7 +65,6 @@ func TestImageFeatures (t *testing.T) {
 //			img.Set(j,i,color.Gray{uint8(i*10+j)})
 		}
 	}
-	fmt.Printf ("Full original image: %v\n", img)
 
 	img.Set(1,1,color.Gray{255})
 	img.Set(2,2,color.Gray{255})
@@ -72,7 +72,21 @@ func TestImageFeatures (t *testing.T) {
 	img.Set(2,4,color.Gray{255})
 	img.Set(3,4,color.Gray{255})
 
-	gf := GrayWithFeatures{img,0,0.0}
+	fmt.Printf ("Full original image: %v\n", img)
+	hf := NewHierarchicalFeatures(img)
+	hf.Dump(os.Stdout)
+
+	xbar,ybar := hf.Centroid(image.Rect(1,1,3,3))
+	fmt.Printf ("hf.Centroid(image.Rect(1,1,3,3)) = %g,%g\n", xbar, ybar)
+
+	xbar,ybar = hf.Centroid(image.Rect(0,0,8,6))
+	fmt.Printf ("hf.Centroid(image.Rect(0,0,8,6)) = %g,%g\n", xbar, ybar)
+
+	for s:=0; s<30; s++ {
+		hf.RandomFeature(int32(s))
+	}
+
+	gf := GrayWithFeatures{img,0,0.0,nil}
 	testImageEdges(t, "Image edges", gf, 4.0/3.0, 1.0)
 	testImageCentroid(t, "Image centroid", gf, 2.2, 2.8)
 	testImageMoments(t, "Image moments", gf, math.Sqrt(0.56), math.Sqrt(1.36), 0.64/math.Sqrt(0.56*1.36))
@@ -84,13 +98,13 @@ func TestImageFeatures (t *testing.T) {
 	subimage := img.SubImage(image.Rect(1,1,3,3)).(*image.Gray)
 	fmt.Printf ("subimage: %v\n", subimage)
 
-	gfsi := GrayWithFeatures{subimage,0,0.0}
+	gfsi := GrayWithFeatures{subimage,0,0.0,nil}
 	testImageEdges(t, "Image edge (1st subimage)", gfsi, 1.0, 1.0)
 	testImageCentroid(t, "Image centroid (1st subimage)", gfsi, 0.5, 0.5)
 	testImageMoments(t, "Image moments (1st subimage)", gfsi, 0.5, 0.5, 1.0)
 
 	subimage = img.SubImage(image.Rect(3,3,4,4)).(*image.Gray)
-	gfsi = GrayWithFeatures{subimage,0,0.0}
+	gfsi = GrayWithFeatures{subimage,0,0.0,nil}
 	testImageEdges(t, "Image edges (2nd subimage)", gfsi, 0.0, 0.0)
 	testImageCentroid(t, "Image centroid (2nd subimage)", gfsi, 0.0, 0.0)
 	testImageMoments(t, "Image moments (2nd subimage)", gfsi, 0.0, 0.0, 0.0)

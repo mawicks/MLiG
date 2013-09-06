@@ -47,8 +47,9 @@ func TestDigitData (t *testing.T) {
 			pix[i] = uint8(f)
 		}
 		grayImage := image.Gray{pix,28,image.Rect(0,0,28,28)}
-		gwf := GrayWithFeatures{&grayImage,0,0.0}
-		digitData[i].featureSelector = func (s int32) float64 { return gwf.RandomFeature(s) }
+//		gwf := GrayWithFeatures{&grayImage,0,0.0,nil}
+		hf := NewHierarchicalFeatures(&grayImage)
+		digitData[i].featureSelector = func (s int32) float64 { return hf.RandomFeature(s) }
 	}
 
 //	start = time.Now()
