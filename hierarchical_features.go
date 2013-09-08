@@ -219,8 +219,8 @@ func (hf *HierarchicalFeatures) RandomFeature(s int32) float64 {
 	
 	hf.memoSeed = s
 
-	depth := int(s % 6)
-	s = s / 6
+	depth := int(s % 5)
+	s = s / 5
 	hf.memoValue = hf.randomFeatureHelper(0, depth, s, image.Rect(0, 0, hf.Gray.Rect.Dx(), hf.Gray.Rect.Dy()), 0.0, 0.0)
 //	fmt.Fprintf (hierarchicalDebug, "\n")
 
@@ -269,35 +269,37 @@ func (hf *HierarchicalFeatures) randomFeatureHelper(depth int, remainingDepth in
 		sigma2X = float64(x2Mass)/float64(mass) - xBar*xBar
 		sigma2Y = float64(y2Mass)/float64(mass) - yBar*yBar
 		sigmaXY = float64(xyMass)/float64(mass) - xBar*yBar
+		if sigma2X > 0.0 {
+			sigmaXY /= math.Sqrt(sigma2X)
+		}
+		if sigma2Y > 0.0 {
+			sigmaXY /= math.Sqrt(sigma2Y)
+		}
 	}
 
 	if remainingDepth > 0 {
-		// When recursing deeper, next two bits of "s" select the quadrant to pass to the next layer
-		// 00 - Upper left
-		// 01 - Upper right
-		// 10 - Lower left
-		// 11 - Lower right
-		quadrant := s % 4
+		// When recursing deeper, next two bits of "s" select the partition to pass to the next layer
+		partition := s % 4
 		s = s >> 2
 		
 		x0 := int(math.Ceil(xBar))
 		y0 := int(math.Ceil(yBar))
 		
-		switch (quadrant) {
+		switch (partition) {
 		case 0:
-//			dbg(depth, "Upper left")
-			r = image.Rect(r.Min.X,r.Min.Y,x0,y0)
+//			dbg(depth, "Upper")
+			r = image.Rect(r.Min.X,r.Min.Y,r.Max.X,y0)
 		case 1:
-//			dbg(depth, "Upper right")
-			r = image.Rect(x0,r.Min.Y,r.Max.X,y0)
+//			dbg(depth, "Lower")
+			r = image.Rect(r.Min.X,y0,r.Max.X,r.Max.Y)
 		case 2:
-//			dbg(depth, "Lower left")
-			r = image.Rect(r.Min.X,y0,x0,r.Max.Y)
+//			dbg(depth, "Left")
+			r = image.Rect(r.Min.X,r.Min.Y,x0,r.Max.Y)
 		case 3:
-//			dbg(depth, "Lower right")
-			r = image.Rect(x0,y0,r.Max.X,r.Max.Y)
+//			dbg(depth, "Right")
+			r = image.Rect(x0,r.Min.Y,r.Max.X,r.Max.Y)
 		default:
-			panic (errors.New("Default of quadrant selection switch.  This should never happen"))
+			panic (errors.New("Default of partition selection switch.  This should never happen"))
 		}
 		result = hf.randomFeatureHelper (depth+1, remainingDepth-1, s, r, xBar, yBar)
 	} else {
