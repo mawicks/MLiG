@@ -15,11 +15,13 @@ type HierarchicalFeatures struct {
 	memoSeed int32
 	memoValue float64
 	randomFeatureSelector RandomFeatureSelector
-	cumMass, cumXMass, cumYMass []int64
+	cumMass, cumXMass, cumYMass []int32
 	cumX2Mass, cumY2Mass, cumXYMass []int64
+	cumVertEdges, cumHorizEdges []int32
 }
 
 var hierarchicalDebug = ioutil.Discard
+//var hierarchicalDebug = os.Stdout
 
 func NewHierarchicalFeatures(gs *image.Gray) *HierarchicalFeatures {
 	l := len(gs.Pix)
@@ -28,13 +30,14 @@ func NewHierarchicalFeatures(gs *image.Gray) *HierarchicalFeatures {
 		memoSeed: -1,
 		memoValue: 0.0,
 		randomFeatureSelector: nil,
-		cumMass: make([]int64,l),
-		cumXMass: make([]int64,l),
-		cumYMass: make([]int64,l),
+		cumMass: make([]int32,l),
+		cumXMass: make([]int32,l),
+		cumYMass: make([]int32,l),
 		cumX2Mass: make([]int64,l),
 		cumY2Mass: make([]int64,l),
-		cumXYMass: make([]int64,l)}
-	
+		cumXYMass: make([]int64,l),
+		cumVertEdges: make([]int32,l),
+		cumHorizEdges: make([]int32,l)}
 	
 	rows := gs.Rect.Dy()
 	cols := gs.Rect.Dx()
@@ -44,9 +47,9 @@ func NewHierarchicalFeatures(gs *image.Gray) *HierarchicalFeatures {
 		for j:=0; j<cols; j++ {
 			index := offset + j
 			pix := gs.Pix[index]
-			hf.cumMass[index] = int64(pix)
-			hf.cumXMass[index] = int64(int32(j)*int32(pix))
-			hf.cumYMass[index] = int64(int32(i)*int32(pix))
+			hf.cumMass[index] = int32(pix)
+			hf.cumXMass[index] = int32(int32(j)*int32(pix))
+			hf.cumYMass[index] = int32(int32(i)*int32(pix))
 			hf.cumX2Mass[index] = int64(int32(j*j)*int32(pix))
 			hf.cumY2Mass[index] = int64(int32(i*i)*int32(pix))
 			hf.cumXYMass[index] = int64(int32(i)*int32(j)*int32(pix))
@@ -57,6 +60,12 @@ func NewHierarchicalFeatures(gs *image.Gray) *HierarchicalFeatures {
 				hf.cumX2Mass[index] += hf.cumX2Mass[index-gs.Stride]
 				hf.cumY2Mass[index] += hf.cumY2Mass[index-gs.Stride]
 				hf.cumXYMass[index] += hf.cumXYMass[index-gs.Stride]
+				if pix >= gs.Pix[index-gs.Stride] {
+					hf.cumVertEdges[index] += hf.cumVertEdges[index-gs.Stride] + int32(pix-gs.Pix[index-gs.Stride])
+				} else {
+					hf.cumVertEdges[index] += hf.cumVertEdges[index-gs.Stride] + int32(gs.Pix[index-gs.Stride]-pix)
+				}
+				hf.cumHorizEdges[index] += hf.cumHorizEdges[index-gs.Stride]
 			}
 			if j>0 {
 				hf.cumMass[index]  += hf.cumMass[index-1]
@@ -65,6 +74,12 @@ func NewHierarchicalFeatures(gs *image.Gray) *HierarchicalFeatures {
 				hf.cumX2Mass[index] += hf.cumX2Mass[index-1]
 				hf.cumY2Mass[index] += hf.cumY2Mass[index-1]
 				hf.cumXYMass[index] += hf.cumXYMass[index-1]
+				hf.cumVertEdges[index] += hf.cumVertEdges[index-1]
+				if pix >= gs.Pix[index-1] {
+					hf.cumHorizEdges[index] += hf.cumHorizEdges[index-1] + int32(pix-gs.Pix[index-1])
+				} else {
+					hf.cumHorizEdges[index] += hf.cumHorizEdges[index-1] + int32(gs.Pix[index-1]-pix)
+				}
 			}
 			if i>0 && j > 0 {
 				hf.cumMass[index]  -= hf.cumMass[index-gs.Stride-1]
@@ -73,6 +88,8 @@ func NewHierarchicalFeatures(gs *image.Gray) *HierarchicalFeatures {
 				hf.cumX2Mass[index] -= hf.cumX2Mass[index-gs.Stride-1]
 				hf.cumY2Mass[index] -= hf.cumY2Mass[index-gs.Stride-1]
 				hf.cumXYMass[index] -= hf.cumXYMass[index-gs.Stride-1]
+				hf.cumVertEdges[index] -= hf.cumVertEdges[index-gs.Stride-1]
+				hf.cumHorizEdges[index] -= hf.cumHorizEdges[index-gs.Stride-1]
 			}
 		}
 		offset += gs.Stride
@@ -98,14 +115,14 @@ func (hf *HierarchicalFeatures) Dump(w io.Writer) {
 			if j!=0 {
 				fmt.Fprintf(w, "  ")
 			}
-			fmt.Fprintf(w, "%4d/%4d/%4d", hf.cumMass[index],hf.cumXMass[index],hf.cumYMass[index])
+			fmt.Fprintf(w, "%2d/%2d/%2d/%2d/%2d", hf.cumMass[index],hf.cumXMass[index],hf.cumYMass[index],hf.cumHorizEdges[index],hf.cumVertEdges[index])
 			index += 1
 		}
 		fmt.Fprintf(w, "\n")
 	}
 }
 
-func (hf *HierarchicalFeatures) MassSums(r image.Rectangle) (mass, xMass, yMass, x2Mass, y2Mass, xyMass int64) {
+func (hf *HierarchicalFeatures) MassSums(r image.Rectangle) (mass, xMass, yMass int32, x2Mass, y2Mass, xyMass int64) {
 	// Remember that Max.Y and Max.X are *outside* of the box
 	// lowerRightIndex is the last point *inside* the box.
 
@@ -157,6 +174,40 @@ func (hf *HierarchicalFeatures) Centroid (r image.Rectangle) (xBar,yBar float64)
 	return xBar,yBar
 }
 
+func (hf *HierarchicalFeatures) Edges(r image.Rectangle) (horizEdges, vertEdges float64) {
+	if r.Dx() == 0 || r.Dy() == 0 {
+		return 0.0,0.0
+	}
+
+	// Remember that Max.Y and Max.X are *outside* of the box
+	// lowerRightIndex is the last point *inside* the box.
+
+	lowerRightIndex := (r.Max.Y-1)*hf.Gray.Stride + (r.Max.X-1)
+
+	vertSum :=  hf.cumVertEdges[lowerRightIndex]
+	horizSum :=  hf.cumHorizEdges[lowerRightIndex]
+
+	if r.Min.X>0 {
+		lowerLeftIndex  := (r.Max.Y-1)*hf.Gray.Stride + (r.Min.X-1)
+		vertSum -= hf.cumVertEdges[lowerLeftIndex]
+		horizSum -= hf.cumHorizEdges[lowerLeftIndex]
+	}
+
+	if r.Min.Y>0 {
+		upperRightIndex := (r.Min.Y-1)*hf.Gray.Stride + (r.Max.X-1)
+		vertSum -= hf.cumVertEdges[upperRightIndex]
+		horizSum -= hf.cumHorizEdges[upperRightIndex]
+	}
+
+	if r.Min.X>0 && r.Min.Y>0 {
+		upperLeftIndex  := (r.Min.Y-1)*hf.Gray.Stride + (r.Min.X-1)
+		vertSum += hf.cumVertEdges[upperLeftIndex]
+		horizSum += hf.cumHorizEdges[upperLeftIndex]
+	}
+
+	return float64(horizSum)/float64(r.Dy()), float64(vertSum)/float64(r.Dx())
+}
+
 func (hf *HierarchicalFeatures) RandomFeature(s int32) float64 {
 //	fmt.Fprintf (hierarchicalDebug, "RandomFeature(s=%d)\n", s)
 	// Use memoized lookups in case same "s" is used repeatedly
@@ -167,14 +218,17 @@ func (hf *HierarchicalFeatures) RandomFeature(s int32) float64 {
 	}
 	
 	hf.memoSeed = s
-	hf.memoValue = hf.randomFeatureHelper(0, s, image.Rect(0, 0, hf.Gray.Rect.Dx(), hf.Gray.Rect.Dy()), 0.0, 0.0)
+
+	depth := int(s % 6)
+	s = s / 6
+	hf.memoValue = hf.randomFeatureHelper(0, depth, s, image.Rect(0, 0, hf.Gray.Rect.Dx(), hf.Gray.Rect.Dy()), 0.0, 0.0)
 //	fmt.Fprintf (hierarchicalDebug, "\n")
 
 	return hf.memoValue
 }
 
 func dbg (depth int, s string) {
-//	fmt.Fprintf (hierarchicalDebug, "%*s\n", 3*depth, s)
+	fmt.Fprintf (hierarchicalDebug, "%*s%s\n", 3*depth, "", s)
 }
 
 // Select a random feature based on the entropy s.  The feature is
@@ -184,11 +238,11 @@ func dbg (depth int, s string) {
 // parent rectangle, which contains the passed rectangle.  The parent
 // rectangle is split into quadrants approximately at (xBar0,yBar0).
 // Any returned centroid coordinates are relative to (xBar0,yBar0)
-func (hf *HierarchicalFeatures) randomFeatureHelper(depth int, s int32, r image.Rectangle, xBar0,yBar0 float64) (result float64) {
-//	fmt.Fprintf (hierarchicalDebug, "%*srandomFeatureHelper(s=%d, r=%v, xBar0=%g, yBar0=%g)\n", depth*3, "", s, r, xBar0, yBar0)
+func (hf *HierarchicalFeatures) randomFeatureHelper(depth int, remainingDepth int, s int32, r image.Rectangle, xBar0,yBar0 float64) (result float64) {
+//	fmt.Fprintf (hierarchicalDebug, "%*srandomFeatureHelper(remainingdepth=%d, s=%d, r=%v, xBar0=%g, yBar0=%g)\n", depth*3, "", remainingDepth, s, r, xBar0, yBar0)
 
 	if r.Dx() == 0 || r.Dy() == 0 {
-		panic ("Rectangle should not have zero dimension")
+		return 0.0
 	}
 
 	// Select a random feature assuming "s" is a random 32-bit
@@ -217,10 +271,7 @@ func (hf *HierarchicalFeatures) randomFeatureHelper(depth int, s int32, r image.
 		sigmaXY = float64(xyMass)/float64(mass) - xBar*yBar
 	}
 
-	// Recurse xx% of the time
-	recurse := s % 2
-	s = s / 2
-	if recurse > 0 { // 70
+	if remainingDepth > 0 {
 		// When recursing deeper, next two bits of "s" select the quadrant to pass to the next layer
 		// 00 - Upper left
 		// 01 - Upper right
@@ -234,46 +285,48 @@ func (hf *HierarchicalFeatures) randomFeatureHelper(depth int, s int32, r image.
 		
 		switch (quadrant) {
 		case 0:
-			dbg(depth, "Upper left")
-			r = image.Rect(r.Min.X,r.Min.Y,x0+1,y0+1)
+//			dbg(depth, "Upper left")
+			r = image.Rect(r.Min.X,r.Min.Y,x0,y0)
 		case 1:
-			dbg(depth, "Upper right")
-			r = image.Rect(x0,r.Min.Y,r.Max.X,y0+1)
+//			dbg(depth, "Upper right")
+			r = image.Rect(x0,r.Min.Y,r.Max.X,y0)
 		case 2:
-			dbg(depth, "Lower left")
-			r = image.Rect(r.Min.X,y0,x0+1,r.Max.Y)
+//			dbg(depth, "Lower left")
+			r = image.Rect(r.Min.X,y0,x0,r.Max.Y)
 		case 3:
-			dbg(depth, "Lower right")
+//			dbg(depth, "Lower right")
 			r = image.Rect(x0,y0,r.Max.X,r.Max.Y)
 		default:
 			panic (errors.New("Default of quadrant selection switch.  This should never happen"))
 		}
-		result = hf.randomFeatureHelper (depth+1, s, r, xBar, yBar)
+		result = hf.randomFeatureHelper (depth+1, remainingDepth-1, s, r, xBar, yBar)
 	} else {
-		feature := s % 6
-		// 00 - Terminate and return "mass"
-		// 01 - Terminate and return xbar
-		// 10 - Terminate and return ybar
-		
+		feature := s % 8
 		switch feature {
 		case 0:
-			dbg(depth, "*Returning mass*")
+//			dbg(depth, "*Returning mass*")
 			result = float64(mass)
 		case 1:
-			dbg(depth, "*Returning x bar*")
+//			dbg(depth, "*Returning x bar*")
 			result = xBar - xBar0
 		case 2:
-			dbg(depth, "*Returning y bar*")
+//			dbg(depth, "*Returning y bar*")
 			result = yBar - yBar0
 		case 3:
-			dbg(depth, "*Returning sigma xx*")
+//			dbg(depth, "*Returning sigma xx*")
 			result = sigma2X
 		case 4:
-			dbg(depth, "*Returning sigma yy*")
+//			dbg(depth, "*Returning sigma yy*")
 			result = sigma2Y
 		case 5:
-			dbg(depth, "*Returning sigma xy*")
+//			dbg(depth, "*Returning sigma xy*")
 			result = sigmaXY
+		case 6:
+//			dbg(depth, "*Returning vertical edges")
+			_,result = hf.Edges(r)
+		case 7:
+//			dbg(depth, "*Returning horizontal edges")
+			result,_ = hf.Edges(r)
 		default:
 			panic (errors.New("Default of feature selection switch.  This should never happen"))
 		}
@@ -281,17 +334,3 @@ func (hf *HierarchicalFeatures) randomFeatureHelper(depth int, s int32, r image.
 //	fmt.Fprintf (hierarchicalDebug, "%*s%g\n", 3*depth, "", result)
 	return result
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

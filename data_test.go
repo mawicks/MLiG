@@ -66,7 +66,7 @@ func TestDigitData (t *testing.T) {
 	ensemble := NewEnsemble()
 
 	for i:=0; i<1000; i++ {
-		newTree := NewTree(30, f)
+		newTree := NewTree(40, f)
 		TrainBag(digitData, newTree)
 		ensemble.AddClassifier(newTree)
 		fmt.Printf ("Tree %d stats - size: %d  depth: %d performance: %g\n", i, newTree.Size(), newTree.Depth(), newTree.Estimate())
