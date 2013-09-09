@@ -46,8 +46,6 @@ func DigitData(filename string) []*Data {
 			}
 		}
 
-//		d.AppendFeatures(rowSums)
-//		d.AppendFeatures(colSums)
 		d.AppendFeatures([]float64{topBottom})
 		d.AppendFeatures([]float64{leftRight})
 	}

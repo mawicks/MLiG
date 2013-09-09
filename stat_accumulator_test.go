@@ -22,18 +22,18 @@ func TestStatAccumulator (t *testing.T) {
 	checkMeanAndVariance(t, "after initialization", a, 0.0, 0.0)
 
 	for _,v := range test1 {
-		a.Add(v)
+		a.Add(v, 1.0)
 	}
 
 	s := fmt.Sprintf ("on data %v", test1)
 
 	checkMeanAndVariance(t, s, a, 9.0, 42.00)
 
-	a.Remove(3.0)
+	a.Remove(3.0, 1.0)
 
 	checkMeanAndVariance(t, s, a, 12.0, 36.0)
 
-	a.Remove(6.0)
+	a.Remove(6.0, 1.0)
 
 	checkMeanAndVariance(t, s, a, 18.0, 0.0)
 }

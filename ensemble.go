@@ -16,6 +16,9 @@ func NewEnsemble() *Ensemble {
 		classifiers: make([]Classifier,0,1000)}
 }
 
+// Randomly select a bag from Data and train the classifier on the bag.
+// Test the classifier on the out-of-bag data and update stat accumulators
+// in the OOB data records
 func TrainBag (data[]*Data, classifier Classifier) {
 	trainSize := 2*len(data)/3
 
@@ -34,8 +37,8 @@ func TrainBag (data[]*Data, classifier Classifier) {
 	testSet := data[trainSize:]
 	for _,d := range testSet {
 		prediction := classifier.Classify(d.featureSelector)
-		d.oobAccumulator.Add (prediction)
-		classifier.Add (d.output - prediction)
+		d.oobAccumulator.Add (prediction, 1.0)
+		classifier.Add (d.output - prediction, 1.0)
 	}
 }
 
@@ -49,7 +52,7 @@ func (te *Ensemble) Error (data[]*Data) float64 {
 		// Only use records that were classified by at least one classifier
 		if d.oobAccumulator.Count() != 0 {
 			estimate := d.oobAccumulator.Estimate()
-			te.errorAccumulator.Add(d.output - estimate)
+			te.errorAccumulator.Add(d.output - estimate, 1.0)
 			if d.output != estimate {
 //				fmt.Fprintf(os.Stdout, "%g Misclassified as %g:\n", d.output, estimate)
 //				d.oobAccumulator.Dump(os.Stdout, 5)

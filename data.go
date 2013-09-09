@@ -10,6 +10,7 @@ type FeatureType int
 
 type Data struct {
 	key string
+	weight float64
 	continuousFeatures []float64
 	categoricalFeatures []int
 	output float64

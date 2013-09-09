@@ -5,7 +5,8 @@ import (
 )
 
 type ErrorAccumulator interface {
-	Add (float64)
+	Add (data, weight float64)
+	// Count() returns the number of elements added (not the weighted count)
 	Count() int
 	Clear()
 	Estimate() float64
@@ -14,7 +15,7 @@ type ErrorAccumulator interface {
 
 type CVAccumulator interface {
 	ErrorAccumulator
-	Remove (float64)
+	Remove (data, weight float64)
 	Metric() float64
 }
 

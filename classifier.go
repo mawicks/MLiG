@@ -5,7 +5,7 @@ type Classifier interface {
 	Train(trainset []*Data)
 
 	// Accumulate statistics for this classifier
-	Add(error float64)
+	Add(error, weight float64)
 	// Return an error estimate
 	Estimate() float64
 }

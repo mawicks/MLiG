@@ -95,6 +95,7 @@ func CSVData(legend string, filename string, outputCategories, skip int) []*Data
 		
 		result = append(result, &Data {
 			key: key,
+			weight: 1.0,
 			continuousFeatures: features,
 			categoricalFeatures: nil,
 			output: output,

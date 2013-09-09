@@ -38,35 +38,23 @@ func TestDigitData (t *testing.T) {
 	digitData := DigitData(filename)
 	fmt.Fprintf (os.Stdout, "Read %d records from \"%s\" (%s)\n", len(digitData), filename, time.Now().Sub(start))
 
-	ShuffleData(digitData)
-//	digitData = digitData[0:2000]
-
 	for i,_ := range digitData {
 		pix := make([]uint8, len(digitData[i].continuousFeatures))
 		for i,f := range digitData[i].continuousFeatures {
 			pix[i] = uint8(f)
 		}
 		grayImage := image.Gray{pix,28,image.Rect(0,0,28,28)}
-//		gwf := GrayWithFeatures{&grayImage,0,0.0,nil}
 		hf := NewHierarchicalFeatures(&grayImage)
 		digitData[i].featureSelector = func (s int32) float64 { return hf.RandomFeature(s) }
 	}
 
-//	start = time.Now()
-//	fmt.Fprintf (os.Stdout, "%s: Computing PCA basis...", start)
-//	s,v := pcaBasis(digitData)
-//	fmt.Printf ("done (%s).\n", time.Now().Sub(start))
-
-//	start = time.Now()
-//	fmt.Fprintf (os.Stdout, "%s: Changing basis and reducing order...", start)
-//	pcaChangeBasis(digitData, s, v, .005)
-//	fmt.Printf ("done (%s).\n", time.Now().Sub(start))
+	ShuffleData(digitData)
 
 	f := continuousFeatureEntropySplitter (digitData[0].outputCategories)
 	ensemble := NewEnsemble()
 
 	for i:=0; i<1000; i++ {
-		newTree := NewTree(40, f)
+		newTree := NewTree(100, f)
 		TrainBag(digitData, newTree)
 		ensemble.AddClassifier(newTree)
 		fmt.Printf ("Tree %d stats - size: %d  depth: %d performance: %g\n", i, newTree.Size(), newTree.Depth(), newTree.Estimate())

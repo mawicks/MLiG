@@ -43,7 +43,7 @@ func continuousFeatureSplit (data []*Data, seed int32, left, right CVAccumulator
 	sort.Sort(s)
 
 	for _,row := range data {
-		right.Add(row.output)
+		right.Add(row.output, row.weight)
 	}
 
 	rightMetric := right.Metric()
@@ -81,8 +81,8 @@ func continuousFeatureSplit (data []*Data, seed int32, left, right CVAccumulator
 					rightSplitSize: rightCount }
 			}
 		}
-		left.Add(row.output)
-		right.Remove(row.output)
+		left.Add(row.output, row.weight)
+		right.Remove(row.output, row.weight)
 
 		previousSplitCandidate = fv
 	}
@@ -142,8 +142,8 @@ func (tree *Tree) Classify(featureSelector func(int32) float64) float64 {
 	return tree.root.classify(featureSelector)
 }
 
-func (tree *Tree) Add(error float64) {
-	tree.errorAccumulator.Add(error)
+func (tree *Tree) Add(error, weight float64) {
+	tree.errorAccumulator.Add(error, weight)
 }
 
 func (tree *Tree) Estimate() float64 {

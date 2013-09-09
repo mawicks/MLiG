@@ -24,20 +24,20 @@ func testDataMSE (t *testing.T, msg string, data []*Data, seed int32, output int
 
 func TestContinuousFeatureMSESplit (t *testing.T) {
 	test1 := []*Data {
-		&Data{continuousFeatures: []float64 {3.0}, output: 7.0, featureSelector: func (int32) float64 {return 3.0}},
-		&Data{continuousFeatures: []float64 {1.0}, output: 4.0, featureSelector: func (int32) float64 {return 1.0}},
-		&Data{continuousFeatures: []float64 {2.0}, output: 4.0, featureSelector: func (int32) float64 {return 2.0}}}
+		&Data{weight: 1.0, continuousFeatures: []float64 {3.0}, output: 7.0, featureSelector: func (int32) float64 {return 3.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64 {1.0}, output: 4.0, featureSelector: func (int32) float64 {return 1.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64 {2.0}, output: 4.0, featureSelector: func (int32) float64 {return 2.0}}}
 
 	test2 := []*Data {
-		&Data{continuousFeatures: []float64{2.0}, output: 5.0, featureSelector: func (int32) float64 {return 2.0}},
-		&Data{continuousFeatures: []float64{1.0}, output: 3.0, featureSelector: func(int32) float64 {return 1.0}},
-		&Data{continuousFeatures: []float64{3.0}, output: 6.0, featureSelector: func(int32) float64 {return 3.0}}}
+		&Data{weight: 1.0, continuousFeatures: []float64{2.0}, output: 5.0, featureSelector: func (int32) float64 {return 2.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{1.0}, output: 3.0, featureSelector: func(int32) float64 {return 1.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{3.0}, output: 6.0, featureSelector: func(int32) float64 {return 3.0}}}
 
 	test3 := []*Data{
-		&Data{continuousFeatures: []float64{2.0}, output: 5.0, featureSelector: func(int32) float64 {return 2.0}},
-		&Data{continuousFeatures: []float64{2.0}, output: 3.0, featureSelector: func(int32) float64 {return 2.0}},
-		&Data{continuousFeatures: []float64{1.0}, output: 3.0, featureSelector: func(int32) float64 {return 1.0}},
-		&Data{continuousFeatures: []float64{3.0}, output: 6.0, featureSelector: func(int32) float64 {return 3.0}}}
+		&Data{weight: 1.0, continuousFeatures: []float64{2.0}, output: 5.0, featureSelector: func(int32) float64 {return 2.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{2.0}, output: 3.0, featureSelector: func(int32) float64 {return 2.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{1.0}, output: 3.0, featureSelector: func(int32) float64 {return 1.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{3.0}, output: 6.0, featureSelector: func(int32) float64 {return 3.0}}}
 
 	// Remember that left branch consists of values < split
 	// right branch branch consists of values >= split
@@ -66,16 +66,16 @@ func testDataEntropy (t *testing.T, msg string, data []*Data, seed int32, output
 
 func TestContinuousFeatureEntropySplit (t *testing.T) {
 	test1 := []*Data {
-		&Data{continuousFeatures: []float64{3.0}, output: 3.0, featureSelector: func (int32) float64 {return 3.0}},
-		&Data{continuousFeatures: []float64{1.0}, output: 1.0, featureSelector: func (int32) float64 {return 1.0}},
-		&Data{continuousFeatures: []float64{2.0}, output: 2.0, featureSelector: func (int32) float64 {return 2.0}},
-		&Data{continuousFeatures: []float64{3.0}, output: 3.0, featureSelector: func (int32) float64 {return 3.0}}}
+		&Data{weight: 1.0, continuousFeatures: []float64{3.0}, output: 3.0, featureSelector: func (int32) float64 {return 3.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{1.0}, output: 1.0, featureSelector: func (int32) float64 {return 1.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{2.0}, output: 2.0, featureSelector: func (int32) float64 {return 2.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{3.0}, output: 3.0, featureSelector: func (int32) float64 {return 3.0}}}
 	
 	test2 := []*Data {
-		&Data{continuousFeatures: []float64{3.0}, output: 2.0, featureSelector: func (int32) float64 {return 3.0}},
-		&Data{continuousFeatures: []float64{1.0}, output: 1.0, featureSelector: func (int32) float64 {return 1.0}},
-		&Data{continuousFeatures: []float64{2.0}, output: 2.0, featureSelector: func (int32) float64 {return 2.0}},
-		&Data{continuousFeatures: []float64{3.0}, output: 2.0, featureSelector: func (int32) float64 {return 2.0}}}
+		&Data{weight: 1.0, continuousFeatures: []float64{3.0}, output: 2.0, featureSelector: func (int32) float64 {return 3.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{1.0}, output: 1.0, featureSelector: func (int32) float64 {return 1.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{2.0}, output: 2.0, featureSelector: func (int32) float64 {return 2.0}},
+		&Data{weight: 1.0, continuousFeatures: []float64{3.0}, output: 2.0, featureSelector: func (int32) float64 {return 2.0}}}
 
 	// Remember that left branch consists of values < split
 	// right branch branch consists of values >= split
@@ -85,17 +85,17 @@ func TestContinuousFeatureEntropySplit (t *testing.T) {
 
 func TestGrow (t *testing.T) {
 	test := []*Data{
-		&Data{continuousFeatures: []float64{0.0, 1.0}, output: 1.0,
+		&Data{weight: 1.0, continuousFeatures: []float64{0.0, 1.0}, output: 1.0,
 			featureSelector: func (s int32) float64 {return []float64{0.0,1.0}[s%2]}},
-		&Data{continuousFeatures: []float64{1.0, 1.0}, output: 1.0,
+		&Data{weight: 1.0, continuousFeatures: []float64{1.0, 1.0}, output: 1.0,
 			featureSelector: func (s int32) float64 {return []float64{1.0,1.0}[s%2]}},
-		&Data{continuousFeatures: []float64{2.0, 1.0}, output: 1.0,
+		&Data{weight: 1.0, continuousFeatures: []float64{2.0, 1.0}, output: 1.0,
 			featureSelector: func (s int32) float64 {return []float64{2.0,1.0}[s%2]}},
-		&Data{continuousFeatures: []float64{2.0, 2.0}, output: 2.0,
+		&Data{weight: 1.0, continuousFeatures: []float64{2.0, 2.0}, output: 2.0,
 			featureSelector: func (s int32) float64 {return []float64{2.0,2.0}[s%2]}},
-		&Data{continuousFeatures: []float64{3.0, 1.0}, output: 2.0,
+		&Data{weight: 1.0, continuousFeatures: []float64{3.0, 1.0}, output: 2.0,
 			featureSelector: func (s int32) float64 {return []float64{3.0,1.0}[s%2]}},
-		&Data{continuousFeatures: []float64{4.0, 0.0}, output: 2.0,
+		&Data{weight: 1.0, continuousFeatures: []float64{4.0, 0.0}, output: 2.0,
 			featureSelector: func (s int32) float64 {return []float64{4.0,0.0}[s%2]}}}
 
 	treeNode := NewTreeNode (math.MaxFloat64,math.MaxFloat64)
