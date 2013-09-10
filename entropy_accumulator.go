@@ -8,14 +8,16 @@ import (
 )
 
 type EntropyAccumulator struct {
-	counts []float64
+	counts []int
+	weightedCounts []float64
 	totalCount int
 	weightedTotalCount float64
 }
 
 func NewEntropyAccumulator(categoryValueCount int) *EntropyAccumulator {
 	return &EntropyAccumulator{
-		counts: make([]float64, categoryValueCount),
+		counts: make([]int, categoryValueCount),
+		weightedCounts: make([]float64, categoryValueCount),
 		totalCount: 0,
 		weightedTotalCount: 0.0}
 }
@@ -26,7 +28,8 @@ func (ea *EntropyAccumulator) Add(category, weight float64) {
 	}
 	ea.totalCount += 1
 	ea.weightedTotalCount += weight
-	ea.counts[int(category)] += weight
+	ea.counts[int(category)] += 1
+	ea.weightedCounts[int(category)] += weight
 }
 
 func (ea *EntropyAccumulator) Remove(category, weight float64) {
@@ -35,17 +38,22 @@ func (ea *EntropyAccumulator) Remove(category, weight float64) {
 	}
 	ea.totalCount -= 1
 	ea.weightedTotalCount -= weight
-	ea.counts[int(category)] -= weight
+	ea.counts[int(category)] -= 1
+	ea.weightedCounts[int(category)] -= weight
 }
 
 func (ea *EntropyAccumulator) Count() int {
 	return ea.totalCount
 }
 
+func (ea *EntropyAccumulator) WeightedCount() float64 {
+	return ea.weightedTotalCount
+}
+
 func (ea *EntropyAccumulator) Estimate() float64 {
 	maxCount := 0.0
 	result := 0.0
-	for i,count := range ea.counts {
+	for i,count := range ea.weightedCounts {
 		if count > maxCount {
 			maxCount = count
 			result = float64(i)
@@ -56,7 +64,7 @@ func (ea *EntropyAccumulator) Estimate() float64 {
 
 func (ea *EntropyAccumulator) Metric() float64 {
 	entropy := 0.0
-	for _,count := range ea.counts {
+	for _,count := range ea.weightedCounts {
 		if count>0.0 {
 			p := count/ea.weightedTotalCount
 			entropy -= p * math.Log2(p)
@@ -67,7 +75,8 @@ func (ea *EntropyAccumulator) Metric() float64 {
 
 func (ea *EntropyAccumulator) Clear() {
 	for i,_ := range ea.counts {
-		ea.counts[i] = 0.0
+		ea.counts[i] = 0
+		ea.weightedCounts[i] = 0.0
 	}
 	ea.totalCount = 0
 	ea.weightedTotalCount = 0.0
@@ -76,8 +85,18 @@ func (ea *EntropyAccumulator) Clear() {
 func (ea *EntropyAccumulator) Dump(w io.Writer, indent int) {
 	fmt.Fprintf (w, "%*scount: %d ", indent, "", ea.totalCount)
 	fmt.Fprintf (w, "%*sweighted count: %g ", indent, "", ea.weightedTotalCount)
-	for i,c := range ea.counts {
-		fmt.Fprintf (w, "  %d:%g", i, c)
+	for i,_ := range ea.counts {
+		fmt.Fprintf (w, "  %d:%d/%g", i, ea.counts[i], ea.weightedCounts[i])
 	}
 	fmt.Fprintf(w, "\n")
 }
+
+
+
+
+
+
+
+
+
+

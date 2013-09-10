@@ -36,6 +36,10 @@ func (sa *StatAccumulator) Count() int {
 	return sa.count
 }
 
+func (sa *StatAccumulator) WeightedCount() float64 {
+	return sa.weightedCount
+}
+
 func (sa *StatAccumulator) Metric() float64 {
 	result := 0.0
 	if sa.count > 0 {

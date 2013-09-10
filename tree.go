@@ -68,7 +68,7 @@ func continuousFeatureSplit (data []*Data, seed int32, left, right CVAccumulator
 			rightMetric := right.Metric()
 			leftCount := left.Count()
 			rightCount := right.Count()
-			error := (float64(leftCount)*leftMetric + float64(rightCount)*rightMetric)/float64(leftCount+rightCount)
+			error := (left.WeightedCount()*leftMetric + right.WeightedCount()*rightMetric)/(left.WeightedCount()+right.WeightedCount())
 			if error < splitInfo.compositeSplitMetric && leftCount >0 && rightCount > 0 {
 				splitInfo = SplitInfo {
 					splitValue: fv,

@@ -1,8 +1,9 @@
 package ML
 
 import (
-//	"fmt"
+	"fmt"
 //	"os"
+	"math"
 )
 
 type Ensemble struct {
@@ -37,9 +38,31 @@ func TrainBag (data[]*Data, classifier Classifier) {
 	testSet := data[trainSize:]
 	for _,d := range testSet {
 		prediction := classifier.Classify(d.featureSelector)
-		d.oobAccumulator.Add (prediction, 1.0)
-		classifier.Add (d.output - prediction, 1.0)
+		classifier.Add (d.output - prediction, d.weight)
 	}
+
+	error := classifier.Estimate()
+	alpha := alphaFromError(error,testSet[0].outputCategories)
+	if alpha < 0.0 {
+		alpha = 0.0
+	}
+	fmt.Printf("alpha is %g\n", alpha)
+
+	for i,d := range testSet {
+		prediction := classifier.Classify(d.featureSelector)
+		if prediction != d.output {
+			testSet[i].weight *= math.Exp2(alpha)
+		}
+		d.oobAccumulator.Add (prediction, alpha)
+	}
+}
+
+func alphaFromError (error float64, categories int) (alpha float64) {
+	if error > 0.0 {
+		alpha = math.Log2((1.0 - error)/error) + math.Log2(float64(categories-1))
+	}
+
+	return alpha
 }
 
 func (te *Ensemble) AddClassifier (newClassifier Classifier) {

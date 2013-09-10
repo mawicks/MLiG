@@ -23,6 +23,10 @@ func (ea *errorAccumulator) Count() int {
 	return ea.totalCount
 }
 
+func (ea *errorAccumulator) WeightedCount() float64 {
+	return ea.weightedTotalCount
+}
+
 func (ea *errorAccumulator) Estimate() float64 {
 	if ea.totalCount > 0 {
 		return ea.errorCount/ea.weightedTotalCount
