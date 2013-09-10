@@ -18,7 +18,7 @@ func XTestGlassData (t *testing.T) {
 	ensemble := NewEnsemble()
 
 	for i:=0; i<1000; i++ {
-		newTree := NewTree(4, f)
+		newTree := NewTree(100, 4, f)
 		TrainBag(glassData, newTree)
 		fmt.Printf ("Tree %d stats - size: %d  depth: %d\n", i, newTree.Size(), newTree.Depth())
 		fmt.Printf ("Tree performance: %g\n", newTree.Estimate())
@@ -54,7 +54,7 @@ func TestDigitData (t *testing.T) {
 	ensemble := NewEnsemble()
 
 	for i:=0; i<10000; i++ {
-		newTree := NewTree(10, f)
+		newTree := NewTree(4, 10, f)
 		TrainBag(digitData, newTree)
 		ensemble.AddClassifier(newTree)
 		fmt.Printf ("Tree %d stats - size: %d  depth: %d (weighted) performance: %g\n", i, newTree.Size(), newTree.Depth(), newTree.Estimate())
