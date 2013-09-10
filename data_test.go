@@ -18,7 +18,8 @@ func XTestGlassData (t *testing.T) {
 	ensemble := NewEnsemble()
 
 	for i:=0; i<1000; i++ {
-		newTree := NewTree(4, f)
+		newTree := NewTree(f)
+		newTree.SetFeaturesToTry(4)
 		TrainBag(glassData, newTree)
 		fmt.Printf ("Tree %d stats - size: %d  depth: %d\n", i, newTree.Size(), newTree.Depth())
 		fmt.Printf ("Tree performance: %g\n", newTree.Estimate())
@@ -65,8 +66,14 @@ func TestDigitData (t *testing.T) {
 	f := continuousFeatureEntropySplitter (digitData[0].outputCategories)
 	ensemble := NewEnsemble()
 
-	for i:=0; i<1000; i++ {
-		newTree := NewTree(40, f)
+	for i:=0; i<10000; i++ {
+		newTree := NewTree(f)
+
+		// Tunable parameters
+		newTree.SetFeaturesToTry(80)
+		newTree.SetMinLeafSize(1)
+		newTree.SetMaxDepth(30)
+
 		TrainBag(digitData, newTree)
 		ensemble.AddClassifier(newTree)
 		fmt.Printf ("Tree %d stats - size: %d  depth: %d performance: %g\n", i, newTree.Size(), newTree.Depth(), newTree.Estimate())
@@ -76,3 +83,13 @@ func TestDigitData (t *testing.T) {
 		}
 	}		
 }
+
+
+
+
+
+
+
+
+
+

@@ -117,15 +117,17 @@ func continuousFeatureEntropySplitter (categoryRange int) func ([]*Data, int32) 
 
 type Tree struct {
 	root *treeNode
+	maxDepth int
 	featuresToTest int
 	randomSubspace []featureComponent
 	continuousFeatureSplit func ([]*Data, int32) SplitInfo
 	errorAccumulator ErrorAccumulator
 }
 
-func NewTree (featuresToTest int, cfSplitter func ([]*Data, int32) SplitInfo) *Tree {
+func NewTree (maxDepth, featuresToTest int, cfSplitter func ([]*Data, int32) SplitInfo) *Tree {
 	return &Tree{
 		root: nil,
+		maxDepth: maxDepth,
 		featuresToTest: featuresToTest,
 		continuousFeatureSplit: cfSplitter,
 		errorAccumulator: &errorAccumulator{}}
@@ -134,6 +136,7 @@ func NewTree (featuresToTest int, cfSplitter func ([]*Data, int32) SplitInfo) *T
 func (tree *Tree) Train(trainingSet[] *Data) {
 	tree.root = NewTreeNode(math.MaxFloat64,math.MaxFloat64)
 	tree.root.grow(trainingSet,
+		tree.maxDepth,
 		tree.featuresToTest,
 		tree.continuousFeatureSplit)
 }
@@ -268,8 +271,12 @@ func randomSubspace(featureVectorSize int) []featureComponent {
 // grow() grows the tree based on the test set "data."  "featureSelector" is a function
 // of a feature record returning the abstract feature value.  continuousFeatureSplit
 // is the splitting function (e.g.,  MSE Error or entropy).
-func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSplitter func ([]*Data, int32) SplitInfo) {
+func (tree *treeNode) grow(data []*Data, maxDepth, featuresToTest int, continuousFeatureSplitter func ([]*Data, int32) SplitInfo) {
 	if (len(data) == 0) {
+		return
+	}
+
+	if maxDepth == 0 {
 		return
 	}
 
@@ -297,8 +304,8 @@ func (tree *treeNode) grow(data []*Data, featuresToTest int, continuousFeatureSp
 		tree.left = NewTreeNode(bestSplitInfo.leftSplitMetric,bestSplitInfo.leftEstimate)
 		tree.right = NewTreeNode(bestSplitInfo.rightSplitMetric,bestSplitInfo.rightEstimate)
 
-		tree.left.grow(leftData, featuresToTest, continuousFeatureSplitter)
-		tree.right.grow(rightData, featuresToTest, continuousFeatureSplitter)
+		tree.left.grow(leftData, maxDepth-1, featuresToTest, continuousFeatureSplitter)
+		tree.right.grow(rightData, maxDepth-1, featuresToTest, continuousFeatureSplitter)
 	}
 }
 

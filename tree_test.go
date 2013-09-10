@@ -101,7 +101,7 @@ func TestGrow (t *testing.T) {
 	treeNode := NewTreeNode (math.MaxFloat64,math.MaxFloat64)
 	f := continuousFeatureEntropySplitter (3)
 
-	treeNode.grow(test, 128, f)
+	treeNode.grow(test, 10, 128, f)
 	for _,d := range test {
 		if d.output != treeNode.classify(d.featureSelector) {
 			t.Errorf ("%g classified as %g\n", d.output, treeNode.classify(d.featureSelector))
