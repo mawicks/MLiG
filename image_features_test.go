@@ -68,6 +68,7 @@ func TestImageFeatures (t *testing.T) {
 	img.Set(3,3,color.Gray{255})
 	img.Set(2,4,color.Gray{255})
 	img.Set(3,4,color.Gray{255})
+	fmt.Printf("img = %v\n", img)
 
 	//    0 1 2 3 4 5 6 7
         // 0: _ _ _ _ _ _ _ _
@@ -81,7 +82,7 @@ func TestImageFeatures (t *testing.T) {
 	img2 := image.NewGray(image.Rect(0, 0, 8, 8))
 	for i:=0; i<8; i++ {
 		for j:=0; j<8; j++ {
-			img.Set(j,i,color.Gray{uint8(0)})
+			img2.Set(j,i,color.Gray{uint8(0)})
 		}
 	}
 	img2.Set(2,1,color.Gray{1})
@@ -114,6 +115,8 @@ func TestImageFeatures (t *testing.T) {
 	}
 
 	gf := GrayWithFeatures{img,0,0.0,nil}
+	fmt.Printf("img = %v\n", img)
+	fmt.Printf("gf = %v\n", gf)
 	testImageEdges(t, "Image edges", gf, 4.0/3.0, 1.0)
 	testImageCentroid(t, "Image centroid", gf, 2.2, 2.8)
 	testImageMoments(t, "Image moments", gf, math.Sqrt(0.56), math.Sqrt(1.36), 0.64/math.Sqrt(0.56*1.36))

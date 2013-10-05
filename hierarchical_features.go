@@ -221,6 +221,7 @@ func (hf *HierarchicalFeatures) RandomFeature(s int32) float64 {
 
 	depth := int(s % 5)
 	s = s / 5
+
 	hf.memoValue = hf.randomFeatureHelper(0, depth, s, image.Rect(0, 0, hf.Gray.Rect.Dx(), hf.Gray.Rect.Dy()), 0.0, 0.0)
 //	fmt.Fprintf (hierarchicalDebug, "\n")
 
@@ -279,31 +280,43 @@ func (hf *HierarchicalFeatures) randomFeatureHelper(depth int, remainingDepth in
 
 	if remainingDepth > 0 {
 		// When recursing deeper, next two bits of "s" select the partition to pass to the next layer
-		partition := s % 4
-		s = s >> 2
+		partition := s % 6
+		s /= 6
 		
 		x0 := int(math.Ceil(xBar))
 		y0 := int(math.Ceil(yBar))
 		
+		upper := image.Rect(r.Min.X,r.Min.Y,r.Max.X,y0)
+		lower := image.Rect(r.Min.X,y0,r.Max.X,r.Max.Y)
+		left  := image.Rect(r.Min.X,r.Min.Y,x0,r.Max.Y)
+		right := image.Rect(x0,r.Min.Y,r.Max.X,r.Max.Y)
+
 		switch (partition) {
 		case 0:
 //			dbg(depth, "Upper")
-			r = image.Rect(r.Min.X,r.Min.Y,r.Max.X,y0)
+			result = hf.randomFeatureHelper (depth+1, remainingDepth-1, s, upper, xBar, yBar)
 		case 1:
 //			dbg(depth, "Lower")
-			r = image.Rect(r.Min.X,y0,r.Max.X,r.Max.Y)
+			result = hf.randomFeatureHelper (depth+1, remainingDepth-1, s, lower, xBar, yBar)
 		case 2:
 //			dbg(depth, "Left")
-			r = image.Rect(r.Min.X,r.Min.Y,x0,r.Max.Y)
+			result = hf.randomFeatureHelper (depth+1, remainingDepth-1, s, left, xBar, yBar)
 		case 3:
 //			dbg(depth, "Right")
-			r = image.Rect(x0,r.Min.Y,r.Max.X,r.Max.Y)
+			result = hf.randomFeatureHelper (depth+1, remainingDepth-1, s, right, xBar, yBar)
+		case 4:
+//			dbg(depth, "upper-lower")
+			result = hf.randomFeatureHelper (depth+1, remainingDepth-1, s, upper, xBar, yBar)
+			result -= hf.randomFeatureHelper (depth+1, remainingDepth-1, s, lower, xBar, yBar)
+		case 5:
+//			dbg(depth, "left-right")
+			result = hf.randomFeatureHelper (depth+1, remainingDepth-1, s, left, xBar, yBar)
+			result -= hf.randomFeatureHelper (depth+1, remainingDepth-1, s, right, xBar, yBar)
 		default:
 			panic (errors.New("Default of partition selection switch.  This should never happen"))
 		}
-		result = hf.randomFeatureHelper (depth+1, remainingDepth-1, s, r, xBar, yBar)
 	} else {
-		feature := s % 8
+		feature := s % 10
 		switch feature {
 		case 0:
 //			dbg(depth, "*Returning mass*")
@@ -324,9 +337,16 @@ func (hf *HierarchicalFeatures) randomFeatureHelper(depth int, remainingDepth in
 //			dbg(depth, "*Returning sigma xy*")
 			result = sigmaXY
 		case 6:
+			dbg(depth, "*Returning MOI*")
+			result = sigma2X + sigma2Y
+		case 7:
+			// Determinant of the intertia matrix, which is rotation invariant.
+//			dbg(depth, "*Returning det*")
+			result = sigma2X*sigma2Y-sigmaXY*sigmaXY
+		case 8:
 //			dbg(depth, "*Returning vertical edges")
 			_,result = hf.Edges(r)
-		case 7:
+		case 9:
 //			dbg(depth, "*Returning horizontal edges")
 			result,_ = hf.Edges(r)
 		default:
@@ -336,3 +356,10 @@ func (hf *HierarchicalFeatures) randomFeatureHelper(depth int, remainingDepth in
 //	fmt.Fprintf (hierarchicalDebug, "%*s%g\n", 3*depth, "", result)
 	return result
 }
+
+
+
+
+
+
+

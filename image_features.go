@@ -130,7 +130,7 @@ func (gwf *GrayWithFeatures) Edges() (vertical, horizontal float64) {
 // selections.  This entropy is removed.  The returned "s" is a
 // revised "s" with all consumed entropy removed.
 
-func randomRectangle (s int32, dx, dy int) (image.Rectangle,int32) {
+func randomRectangle (s int32, dx, dy int) (r image.Rectangle, newS int32) {
 	// Choose random window
 	x1 := int(s % int32(dx))
 	

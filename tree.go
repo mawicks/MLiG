@@ -64,14 +64,23 @@ func continuousFeatureSplit (data []*Data, seed int32, left, right CVAccumulator
 	for i,row := range data {
 		fv := row.featureSelector(seed)
 		if (i != 0 && fv != previousSplitCandidate) {
+			if (fv <= previousSplitCandidate) {
+				fmt.Printf ("Sanity check: fv=%g <= previousSplitCandidate=%g\n", fv, previousSplitCandidate)
+			}
 			leftMetric := left.Metric()
 			rightMetric := right.Metric()
 			leftCount := left.Count()
 			rightCount := right.Count()
 			error := (float64(leftCount)*leftMetric + float64(rightCount)*rightMetric)/float64(leftCount+rightCount)
-			if error < splitInfo.compositeSplitMetric && leftCount >0 && rightCount > 0 {
+			if error < splitInfo.compositeSplitMetric && leftCount > 0 && rightCount > 0 {
+				sv := 0.5*(previousSplitCandidate+fv)
+				// When previousSplitCandidate and fv are extremely close, split value can exactly match
+				// previousSplitCandidate.  In that case, use the upper value (fv)
+				if sv == previousSplitCandidate {
+					sv = fv
+				}
 				splitInfo = SplitInfo {
-					splitValue: fv,
+					splitValue: sv,
 					leftEstimate: left.Estimate(),
 					rightEstimate: right.Estimate(),
 					leftSplitMetric: leftMetric,
@@ -85,6 +94,31 @@ func continuousFeatureSplit (data []*Data, seed int32, left, right CVAccumulator
 		right.Remove(row.output)
 
 		previousSplitCandidate = fv
+	}
+
+	leftCount := 0
+	rightCount := 0
+	maxBeforeSplit := -math.MaxFloat64
+	minAfterSplit := math.MaxFloat64
+	if splitInfo.leftSplitSize != 0 && splitInfo.rightSplitSize != 0 {
+		for _,row := range data {
+			fv := row.featureSelector(seed)
+			if (fv < splitInfo.splitValue) {
+				leftCount += 1
+				if fv > maxBeforeSplit {
+					maxBeforeSplit = fv
+				}
+			} else {
+				rightCount += 1
+				if fv < minAfterSplit {
+					minAfterSplit = fv
+				}
+			}
+		}
+		if leftCount != splitInfo.leftSplitSize || rightCount != splitInfo.rightSplitSize {
+			fmt.Printf ("leftCount=%d,leftSplitSize=%d,rightCount=%d,rightSplitSize=%d\nmaxbeforeSplit=%g,splitValue=%g,minAfterSplit=%g\n",
+				leftCount, splitInfo.leftSplitSize,rightCount,splitInfo.rightSplitSize,maxBeforeSplit,splitInfo.splitValue,minAfterSplit)
+		}
 	}
 	return
 }
@@ -118,26 +152,41 @@ func continuousFeatureEntropySplitter (categoryRange int) func ([]*Data, int32) 
 type Tree struct {
 	root *treeNode
 	maxDepth int
-	featuresToTest int
+	minLeafSize int
+	featuresToTry int
 	randomSubspace []featureComponent
 	continuousFeatureSplit func ([]*Data, int32) SplitInfo
 	errorAccumulator ErrorAccumulator
 }
 
-func NewTree (maxDepth, featuresToTest int, cfSplitter func ([]*Data, int32) SplitInfo) *Tree {
+func NewTree (cfSplitter func ([]*Data, int32) SplitInfo) *Tree {
 	return &Tree{
 		root: nil,
-		maxDepth: maxDepth,
-		featuresToTest: featuresToTest,
+		maxDepth: int(math.MaxInt32),
+		minLeafSize: 1,
+		featuresToTry: 1,
 		continuousFeatureSplit: cfSplitter,
 		errorAccumulator: &errorAccumulator{}}
+}
+
+func (tree *Tree) SetMaxDepth(depth int) {
+	tree.maxDepth = depth
+}
+ 
+func (tree *Tree) SetMinLeafSize(size int) {
+	tree.minLeafSize = size
+}
+
+func (tree *Tree) SetFeaturesToTry(n int) {
+	tree.featuresToTry = n
 }
 
 func (tree *Tree) Train(trainingSet[] *Data) {
 	tree.root = NewTreeNode(math.MaxFloat64,math.MaxFloat64)
 	tree.root.grow(trainingSet,
 		tree.maxDepth,
-		tree.featuresToTest,
+		tree.minLeafSize,
+		tree.featuresToTry,
 		tree.continuousFeatureSplit)
 }
 
@@ -271,7 +320,7 @@ func randomSubspace(featureVectorSize int) []featureComponent {
 // grow() grows the tree based on the test set "data."  "featureSelector" is a function
 // of a feature record returning the abstract feature value.  continuousFeatureSplit
 // is the splitting function (e.g.,  MSE Error or entropy).
-func (tree *treeNode) grow(data []*Data, maxDepth, featuresToTest int, continuousFeatureSplitter func ([]*Data, int32) SplitInfo) {
+func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry int, continuousFeatureSplitter func ([]*Data, int32) SplitInfo) {
 	if (len(data) == 0) {
 		return
 	}
@@ -282,11 +331,13 @@ func (tree *treeNode) grow(data []*Data, maxDepth, featuresToTest int, continuou
 
 	var bestSplitInfo SplitInfo
 
-	for i:= 0; i<featuresToTest; i++ {
+	for i:= 0; i<featuresToTry; i++ {
 //		candidateSeed := rand.Int31n(int32(len(data[0].continuousFeatures)))
 		candidateSeed := rand.Int31()
 		candidateSplitInfo := continuousFeatureSplitter(data, candidateSeed)
-		if candidateSplitInfo.leftSplitSize > 0 && candidateSplitInfo.compositeSplitMetric < tree.metric {
+		if candidateSplitInfo.leftSplitSize >= minLeafSize && 
+		   candidateSplitInfo.rightSplitSize >= minLeafSize &&
+		   candidateSplitInfo.compositeSplitMetric < tree.metric {
 			bestSplitInfo = candidateSplitInfo
 			tree.metric = candidateSplitInfo.compositeSplitMetric
 			tree.seed = candidateSeed
@@ -304,8 +355,8 @@ func (tree *treeNode) grow(data []*Data, maxDepth, featuresToTest int, continuou
 		tree.left = NewTreeNode(bestSplitInfo.leftSplitMetric,bestSplitInfo.leftEstimate)
 		tree.right = NewTreeNode(bestSplitInfo.rightSplitMetric,bestSplitInfo.rightEstimate)
 
-		tree.left.grow(leftData, maxDepth-1, featuresToTest, continuousFeatureSplitter)
-		tree.right.grow(rightData, maxDepth-1, featuresToTest, continuousFeatureSplitter)
+		tree.left.grow(leftData, maxDepth-1, minLeafSize, featuresToTry, continuousFeatureSplitter)
+		tree.right.grow(rightData, maxDepth-1, minLeafSize, featuresToTry, continuousFeatureSplitter)
 	}
 }
 
@@ -334,13 +385,11 @@ func (tree *treeNode) size() int {
 
 func (tree *treeNode) depth() int {
 	result := 0
-	if tree.seed == -1 {
-		result = 1
-	} else {
+	if tree.seed != -1 {
 		result = 1 + tree.left.depth()
-		rightDepth := tree.right.depth()
-		if rightDepth >= result {
-			result = 1 + rightDepth
+		rightDepth := 1 + tree.right.depth()
+		if rightDepth > result {
+			result = rightDepth
 		}
 	}
 	return result
