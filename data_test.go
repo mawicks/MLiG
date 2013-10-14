@@ -76,7 +76,8 @@ func TestDigitData (t *testing.T) {
 
 		TrainBag(digitData, newTree)
 		ensemble.AddClassifier(newTree)
-		fmt.Printf ("Tree %d stats - size: %d  depth: %d performance: %g\n", i, newTree.Size(), newTree.Depth(), newTree.Estimate())
+		fmt.Printf ("Tree %d stats - size: %d  depth: %d leaves %d performance: %g\n",
+			i, newTree.Size(), newTree.Depth(), newTree.Leaves(), newTree.Estimate())
 		mserror := ensemble.Error(digitData)
 		if i % 1 == 0 {
 			fmt.Printf ("Trees: %d: ensemble error=%g\n", i, mserror)

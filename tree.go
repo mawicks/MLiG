@@ -214,6 +214,10 @@ func (tree *Tree) Depth() int {
 	return tree.root.depth()
 }
 
+func (tree *Tree) Leaves() int {
+	return tree.root.leaves()
+}
+
 type treeNode struct {
 	left *treeNode
 	right *treeNode
@@ -379,7 +383,7 @@ func (tree *treeNode) size() int {
 	if tree.seed == -1 {
 		return 1
 	} else {
-		return tree.left.size() + tree.right.size()
+		return 1 + tree.left.size() + tree.right.size()
 	}
 }
 
@@ -391,6 +395,16 @@ func (tree *treeNode) depth() int {
 		if rightDepth > result {
 			result = rightDepth
 		}
+	}
+	return result
+}
+
+func (tree *treeNode) leaves() int {
+	result := 0
+	if tree.seed == -1 {
+		result = 1
+	} else {
+		result = tree.left.leaves() + tree.right.leaves()
 	}
 	return result
 }
