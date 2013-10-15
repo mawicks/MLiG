@@ -7,7 +7,7 @@ import (
 )
 
 func testDataMSE (t *testing.T, msg string, data []*Data, seed int32, output int, expectedSplit, expectedLeftError, expectedRightError float64, size int) {
-	splitInfo := continuousFeatureMSESplit(data, seed)
+	splitInfo := continuousFeatureSplit(data, seed, StatAccumulatorFactory())
 	if (splitInfo.splitValue != expectedSplit) {
 		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, splitInfo.splitValue)
 	}
@@ -48,8 +48,9 @@ func TestContinuousFeatureMSESplit (t *testing.T) {
 }
 
 func testDataEntropy (t *testing.T, msg string, data []*Data, seed int32, outputValueCount int, expectedSplit, expectedLeftEntropy, expectedRightEntropy float64, size int) {
-	f := continuousFeatureEntropySplitter (outputValueCount)
-	splitInfo := f(data, seed)
+//	f := continuousFeatureEntropySplitter (outputValueCount)
+//	splitInfo := f(data, seed)
+	splitInfo := continuousFeatureSplit (data, seed, EntropyAccumulatorFactory(outputValueCount))
 	if (splitInfo.splitValue != expectedSplit) {
 		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, splitInfo.splitValue)
 	}
@@ -99,9 +100,10 @@ func TestGrow (t *testing.T) {
 			featureSelector: func (s int32) float64 {return []float64{4.0,0.0}[s%2]}}}
 
 	treeNode := NewTreeNode (math.MaxFloat64,math.MaxFloat64)
-	f := continuousFeatureEntropySplitter (3)
 
-	treeNode.grow(test, 10, 1, 128, f)
+//	f := continuousFeatureEntropySplitter (3)
+
+	treeNode.grow(test, 10, 1, 128, EntropyAccumulatorFactory(3))
 	for _,d := range test {
 		if d.output != treeNode.classify(d.featureSelector) {
 			t.Errorf ("%g classified as %g\n", d.output, treeNode.classify(d.featureSelector))

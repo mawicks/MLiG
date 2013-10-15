@@ -14,11 +14,11 @@ func XTestGlassData (t *testing.T) {
 	glassData := GlassData(filename)
 	fmt.Fprintf (os.Stdout, "Read %d records from \"%s\"\n", len(glassData), filename)
 
-	f := continuousFeatureEntropySplitter (glassData[0].outputCategories)
+//	f := continuousFeatureEntropySplitter (glassData[0].outputCategories)
 	ensemble := NewEnsemble()
 
 	for i:=0; i<1000; i++ {
-		newTree := NewTree(f)
+		newTree := NewTree(EntropyAccumulatorFactory(glassData[0].outputCategories))
 		newTree.SetFeaturesToTry(4)
 		TrainBag(glassData, newTree)
 		fmt.Printf ("Tree %d stats - size: %d  depth: %d\n", i, newTree.Size(), newTree.Depth())
@@ -63,11 +63,11 @@ func TestDigitData (t *testing.T) {
 //	pcaChangeBasis(digitData, s, v, .005)
 //	fmt.Printf ("done (%s).\n", time.Now().Sub(start))
 
-	f := continuousFeatureEntropySplitter (digitData[0].outputCategories)
+//	f := continuousFeatureEntropySplitter (digitData[0].outputCategories)
 	ensemble := NewEnsemble()
 
 	for i:=0; i<10000; i++ {
-		newTree := NewTree(f)
+		newTree := NewTree(EntropyAccumulatorFactory(digitData[0].outputCategories))
 
 		// Tunable parameters
 		newTree.SetFeaturesToTry(80)

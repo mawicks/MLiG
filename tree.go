@@ -35,7 +35,10 @@ type SplitInfo struct {
 // split, the left and right partition metric after the split, and
 // the size of the left split.  The returned size will be zero if the
 // error cannot be reduced.
-func continuousFeatureSplit (data []*Data, seed int32, left, right CVAccumulator) (splitInfo SplitInfo) {
+func continuousFeatureSplit (data []*Data, seed int32, accumulatorFactory func() CVAccumulator) (splitInfo SplitInfo) {
+	left := accumulatorFactory()
+	right := accumulatorFactory()
+
 	left.Clear()
 	right.Clear()
 	
@@ -123,49 +126,23 @@ func continuousFeatureSplit (data []*Data, seed int32, left, right CVAccumulator
 	return
 }
 
-// Split the data with a continuously valued output variable along the
-// continuously valued feature axis.  Return the feature value for the
-// split, the left and right mean-squared error after the split, and
-// the size of the left split.  The returned size will be zero if the
-// error cannot be reduced.
-func continuousFeatureMSESplit (data[] *Data, seed int32) SplitInfo {
-	var (
-		left, right StatAccumulator
-	)
-	return continuousFeatureSplit (data, seed, &left, &right)
-}
-
-// Split the data with a categorical output variable along the feature
-// axis.  Return the feature value for the split, the entropies of the
-// left and right splits, the size of the left split.  The returned
-// size will be zero if the entropy cannot be reduced.
-func continuousFeatureEntropySplitter (categoryRange int) func ([]*Data, int32) SplitInfo {
-	return func (data []*Data, seed int32) SplitInfo {
-		left := NewEntropyAccumulator(categoryRange)
-		right := NewEntropyAccumulator(categoryRange)
-		
-		return continuousFeatureSplit (data, 
-			seed, left, right)
-	}
-}
-
 type Tree struct {
 	root *treeNode
 	maxDepth int
 	minLeafSize int
 	featuresToTry int
 	randomSubspace []featureComponent
-	continuousFeatureSplit func ([]*Data, int32) SplitInfo
+	accumulatorFactory func() CVAccumulator
 	errorAccumulator ErrorAccumulator
 }
 
-func NewTree (cfSplitter func ([]*Data, int32) SplitInfo) *Tree {
+func NewTree (accumulatorFactory func() CVAccumulator) *Tree {
 	return &Tree{
 		root: nil,
 		maxDepth: int(math.MaxInt32),
 		minLeafSize: 1,
 		featuresToTry: 1,
-		continuousFeatureSplit: cfSplitter,
+		accumulatorFactory: accumulatorFactory,
 		errorAccumulator: &errorAccumulator{}}
 }
 
@@ -187,7 +164,7 @@ func (tree *Tree) Train(trainingSet[] *Data) {
 		tree.maxDepth,
 		tree.minLeafSize,
 		tree.featuresToTry,
-		tree.continuousFeatureSplit)
+		tree.accumulatorFactory)
 }
 
 func (tree *Tree) Classify(featureSelector func(int32) float64) float64 {
@@ -324,7 +301,7 @@ func randomSubspace(featureVectorSize int) []featureComponent {
 // grow() grows the tree based on the test set "data."  "featureSelector" is a function
 // of a feature record returning the abstract feature value.  continuousFeatureSplit
 // is the splitting function (e.g.,  MSE Error or entropy).
-func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry int, continuousFeatureSplitter func ([]*Data, int32) SplitInfo) {
+func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry int, accumulatorFactory func() CVAccumulator) {
 	if (len(data) == 0) {
 		return
 	}
@@ -338,7 +315,7 @@ func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry in
 	for i:= 0; i<featuresToTry; i++ {
 //		candidateSeed := rand.Int31n(int32(len(data[0].continuousFeatures)))
 		candidateSeed := rand.Int31()
-		candidateSplitInfo := continuousFeatureSplitter(data, candidateSeed)
+		candidateSplitInfo := continuousFeatureSplit(data, candidateSeed, accumulatorFactory)
 		if candidateSplitInfo.leftSplitSize >= minLeafSize && 
 		   candidateSplitInfo.rightSplitSize >= minLeafSize &&
 		   candidateSplitInfo.compositeSplitMetric < tree.metric {
@@ -359,8 +336,8 @@ func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry in
 		tree.left = NewTreeNode(bestSplitInfo.leftSplitMetric,bestSplitInfo.leftEstimate)
 		tree.right = NewTreeNode(bestSplitInfo.rightSplitMetric,bestSplitInfo.rightEstimate)
 
-		tree.left.grow(leftData, maxDepth-1, minLeafSize, featuresToTry, continuousFeatureSplitter)
-		tree.right.grow(rightData, maxDepth-1, minLeafSize, featuresToTry, continuousFeatureSplitter)
+		tree.left.grow(leftData, maxDepth-1, minLeafSize, featuresToTry, accumulatorFactory)
+		tree.right.grow(rightData, maxDepth-1, minLeafSize, featuresToTry, accumulatorFactory)
 	}
 }
 

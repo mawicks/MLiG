@@ -14,6 +14,12 @@ type StatAccumulator struct {
 	sumOfSquares float64
 }
 
+func StatAccumulatorFactory() func() CVAccumulator {
+	return func () CVAccumulator {
+		return &StatAccumulator{}
+	}
+}
+
 func (sa *StatAccumulator) Add(x float64) {
 	sa.count += 1
 	sa.sum += x
