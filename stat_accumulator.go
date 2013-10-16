@@ -20,6 +20,13 @@ func StatAccumulatorFactory() func() CVAccumulator {
 	}
 }
 
+func (sa *StatAccumulator) Clone() ErrorAccumulator {
+	return &StatAccumulator{
+		count: sa.count,
+		sum: sa.sum,
+		sumOfSquares: sa.sumOfSquares}
+}
+
 func (sa *StatAccumulator) Add(x float64) {
 	sa.count += 1
 	sa.sum += x

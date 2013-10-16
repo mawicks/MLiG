@@ -12,6 +12,14 @@ type EntropyAccumulator struct {
 	totalCount int
 }
 
+func (ea EntropyAccumulator) String() string {
+	s := fmt.Sprintf ("entropyaccumulator[%d]: ", ea.totalCount)
+	for i,c := range ea.counts {
+		s = s + fmt.Sprintf(" %d:%d", i, c)
+	}
+	return s
+}
+
 func NewEntropyAccumulator(categoryValueCount int) *EntropyAccumulator {
 	return &EntropyAccumulator{
 		counts: make([]int, categoryValueCount),
@@ -22,6 +30,14 @@ func EntropyAccumulatorFactory (categoryValueCount int) func() CVAccumulator {
 	return func() CVAccumulator {
 		return NewEntropyAccumulator (categoryValueCount)
 	}
+}
+
+func (ea *EntropyAccumulator) Clone() ErrorAccumulator {
+	counts := make([]int, len(ea.counts))
+	copy(counts,ea.counts)
+	return &EntropyAccumulator{
+		counts: counts,
+		totalCount: ea.totalCount}
 }
 
 func (ea *EntropyAccumulator) Add(category float64) {

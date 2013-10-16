@@ -9,6 +9,7 @@ type ErrorAccumulator interface {
 	Count() int
 	Clear()
 	Estimate() float64
+	Clone() ErrorAccumulator
 	Dump(io.Writer, int)
 }
 

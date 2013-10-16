@@ -11,14 +11,14 @@ func testDataMSE (t *testing.T, msg string, data []*Data, seed int32, output int
 	if (splitInfo.splitValue != expectedSplit) {
 		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, splitInfo.splitValue)
 	}
-	if math.Abs(splitInfo.leftSplitMetric-expectedLeftError) > 1e-12*math.Abs(expectedLeftError) {
-		t.Errorf ("%s: expected left error: %v; got: %v", msg, expectedLeftError, splitInfo.leftSplitMetric)
+	if math.Abs(splitInfo.left.Metric()-expectedLeftError) > 1e-12*math.Abs(expectedLeftError) {
+		t.Errorf ("%s: expected left error: %v; got: %v", msg, expectedLeftError, splitInfo.left.Metric())
 	}
-	if math.Abs(splitInfo.rightSplitMetric-expectedRightError) > 1e-12*math.Abs(expectedRightError) {
-		t.Errorf ("%s: expected right error: %v; got: %v", msg, expectedRightError, splitInfo.rightSplitMetric)
+	if math.Abs(splitInfo.right.Metric()-expectedRightError) > 1e-12*math.Abs(expectedRightError) {
+		t.Errorf ("%s: expected right error: %v; got: %v", msg, expectedRightError, splitInfo.right.Metric())
 	}
-	if splitInfo.leftSplitSize != size {
-		t.Errorf ("%s: expected left split size: %v; got: %v", msg, size, splitInfo.leftSplitSize)
+	if splitInfo.left.Count() != size {
+		t.Errorf ("%s: expected left split size: %v; got: %v", msg, size, splitInfo.left.Count())
 	}
 }
 
@@ -54,14 +54,14 @@ func testDataEntropy (t *testing.T, msg string, data []*Data, seed int32, output
 	if (splitInfo.splitValue != expectedSplit) {
 		t.Errorf ("%s: expected split: %v; got: %v", msg, expectedSplit, splitInfo.splitValue)
 	}
-	if math.Abs(splitInfo.leftSplitMetric-expectedLeftEntropy) > 1e-12*math.Abs(expectedLeftEntropy) {
-		t.Errorf ("%s: expected left entropy: %v; got: %v", msg, expectedLeftEntropy, splitInfo.leftSplitMetric)
+	if math.Abs(splitInfo.left.Metric()-expectedLeftEntropy) > 1e-12*math.Abs(expectedLeftEntropy) {
+		t.Errorf ("%s: expected left entropy: %v; got: %v", msg, expectedLeftEntropy, splitInfo.left.Count())
 	}
-	if math.Abs(splitInfo.rightSplitMetric-expectedRightEntropy) > 1e-12*math.Abs(expectedRightEntropy) {
-		t.Errorf ("%s: expected right entropy: %v; got: %v", msg, expectedRightEntropy, splitInfo.rightSplitMetric)
+	if math.Abs(splitInfo.right.Metric()-expectedRightEntropy) > 1e-12*math.Abs(expectedRightEntropy) {
+		t.Errorf ("%s: expected right entropy: %v; got: %v", msg, expectedRightEntropy, splitInfo.right.Count())
 	}
-	if splitInfo.leftSplitSize != size {
-		t.Errorf ("%s: expected left split size: %v; got: %v", msg, size, splitInfo.leftSplitSize)
+	if splitInfo.left.Count() != size {
+		t.Errorf ("%s: expected left split size: %v; got: %v", msg, size, splitInfo.left.Count())
 	}
 }
 

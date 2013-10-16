@@ -17,6 +17,12 @@ func (ea *errorAccumulator) Add(error float64) {
 	}
 }
 
+func (ea *errorAccumulator) Clone() ErrorAccumulator {
+	return &errorAccumulator{
+		totalCount: ea.totalCount,
+		errorCount: ea.errorCount}
+}
+
 func (ea *errorAccumulator) Count() int {
 	return ea.totalCount
 }

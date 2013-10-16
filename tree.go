@@ -22,13 +22,16 @@ const (
 )
 
 type SplitInfo struct {
-	splitValue float64
-	leftSplitMetric, rightSplitMetric float64
-	leftEstimate, rightEstimate float64
 	compositeSplitMetric float64
-	leftSplitSize, rightSplitSize int
+	splitValue float64
+	left, right CVAccumulator
 }
 
+func (si *SplitInfo) String() string {
+	s := fmt.Sprintf ("{ compositeSplitMetric: %g splitValue %g\n", si.compositeSplitMetric, si.splitValue)
+	s = s + fmt.Sprintf ("   left: [%v]\n   right: [%v]\n}", si.left, si.right)
+	return s
+}
 
 // Split the data with a continuously valued output variable along the
 // continuously valued feature axis.  Return the feature value for the
@@ -54,13 +57,9 @@ func continuousFeatureSplit (data []*Data, seed int32, accumulatorFactory func()
 	splitInfo = SplitInfo {
 		// Initialize splitValue with the *output* estimate
 		splitValue: 0.0,
-		leftEstimate: left.Estimate(),
-		rightEstimate: right.Estimate(),
-		leftSplitMetric: 0,
-		rightSplitMetric: rightMetric,
 		compositeSplitMetric: rightMetric,
-		leftSplitSize: 0,
-		rightSplitSize: len(data) }
+		left: left.Clone().(CVAccumulator),
+		right: right.Clone().(CVAccumulator)}
 	
 	previousSplitCandidate := - math.MaxFloat64
 
@@ -82,15 +81,10 @@ func continuousFeatureSplit (data []*Data, seed int32, accumulatorFactory func()
 				if sv == previousSplitCandidate {
 					sv = fv
 				}
-				splitInfo = SplitInfo {
-					splitValue: sv,
-					leftEstimate: left.Estimate(),
-					rightEstimate: right.Estimate(),
-					leftSplitMetric: leftMetric,
-					rightSplitMetric: rightMetric,
-					compositeSplitMetric: error,
-					leftSplitSize: leftCount,
-					rightSplitSize: rightCount }
+				splitInfo.left = left.Clone().(CVAccumulator)
+				splitInfo.right = right.Clone().(CVAccumulator)
+				splitInfo.splitValue = sv
+				splitInfo.compositeSplitMetric = error
 			}
 		}
 		left.Add(row.output)
@@ -103,7 +97,7 @@ func continuousFeatureSplit (data []*Data, seed int32, accumulatorFactory func()
 	rightCount := 0
 	maxBeforeSplit := -math.MaxFloat64
 	minAfterSplit := math.MaxFloat64
-	if splitInfo.leftSplitSize != 0 && splitInfo.rightSplitSize != 0 {
+	if left.Count() != 0 && right.Count() != 0 {
 		for _,row := range data {
 			fv := row.featureSelector(seed)
 			if (fv < splitInfo.splitValue) {
@@ -118,9 +112,9 @@ func continuousFeatureSplit (data []*Data, seed int32, accumulatorFactory func()
 				}
 			}
 		}
-		if leftCount != splitInfo.leftSplitSize || rightCount != splitInfo.rightSplitSize {
+		if leftCount != left.Count() || rightCount != right.Count() {
 			fmt.Printf ("leftCount=%d,leftSplitSize=%d,rightCount=%d,rightSplitSize=%d\nmaxbeforeSplit=%g,splitValue=%g,minAfterSplit=%g\n",
-				leftCount, splitInfo.leftSplitSize,rightCount,splitInfo.rightSplitSize,maxBeforeSplit,splitInfo.splitValue,minAfterSplit)
+				leftCount, left.Count(),rightCount,right.Count(),maxBeforeSplit,splitInfo.splitValue,minAfterSplit)
 		}
 	}
 	return
@@ -316,8 +310,9 @@ func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry in
 //		candidateSeed := rand.Int31n(int32(len(data[0].continuousFeatures)))
 		candidateSeed := rand.Int31()
 		candidateSplitInfo := continuousFeatureSplit(data, candidateSeed, accumulatorFactory)
-		if candidateSplitInfo.leftSplitSize >= minLeafSize && 
-		   candidateSplitInfo.rightSplitSize >= minLeafSize &&
+//		fmt.Printf("candidateSplitInfo = %v\n", candidateSplitInfo.String())
+		if candidateSplitInfo.left.Count() >= minLeafSize && 
+		   candidateSplitInfo.right.Count() >= minLeafSize &&
 		   candidateSplitInfo.compositeSplitMetric < tree.metric {
 			bestSplitInfo = candidateSplitInfo
 			tree.metric = candidateSplitInfo.compositeSplitMetric
@@ -328,13 +323,13 @@ func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry in
 	if tree.seed != -1 {
 		tree.splitValue = bestSplitInfo.splitValue
 		
-		leftData := make([]*Data, bestSplitInfo.leftSplitSize)
-		rightData := make([]*Data, bestSplitInfo.rightSplitSize)
+		leftData := make([]*Data, bestSplitInfo.left.Count())
+		rightData := make([]*Data, bestSplitInfo.right.Count())
 		
 		splitData(data, tree.splitValue, tree.seed, leftData, rightData)
 		
-		tree.left = NewTreeNode(bestSplitInfo.leftSplitMetric,bestSplitInfo.leftEstimate)
-		tree.right = NewTreeNode(bestSplitInfo.rightSplitMetric,bestSplitInfo.rightEstimate)
+		tree.left = NewTreeNode(bestSplitInfo.left.Metric(),bestSplitInfo.left.Estimate())
+		tree.right = NewTreeNode(bestSplitInfo.right.Metric(),bestSplitInfo.right.Estimate())
 
 		tree.left.grow(leftData, maxDepth-1, minLeafSize, featuresToTry, accumulatorFactory)
 		tree.right.grow(rightData, maxDepth-1, minLeafSize, featuresToTry, accumulatorFactory)
