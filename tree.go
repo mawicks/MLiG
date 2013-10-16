@@ -153,7 +153,11 @@ func (tree *Tree) SetFeaturesToTry(n int) {
 }
 
 func (tree *Tree) Train(trainingSet[] *Data) {
-	tree.root = NewTreeNode(math.MaxFloat64,math.MaxFloat64)
+	statistics := tree.accumulatorFactory()
+	for _,d := range trainingSet {
+		statistics.Add(d.output)
+	}
+	tree.root = NewTreeNode(statistics)
 	tree.root.grow(trainingSet,
 		tree.maxDepth,
 		tree.minLeafSize,
@@ -190,41 +194,31 @@ func (tree *Tree) Leaves() int {
 }
 
 type treeNode struct {
+	featureType FeatureType // Either CATEGORICAL OR CONTINUOUS
+
+	// statistics contains the accumulated statistics for the
+	// training data used to generate this node.
+	statistics CVAccumulator
+
+	// In a leaf node, "seed" is -1, and the "left" and "right"
+	// pointers are nil.  In a non-leaf node, "seed" is the seed
+	// that defines the random feature used to split this node.
+	seed int32
 	left *treeNode
 	right *treeNode
 	
-	featureType FeatureType // Either CATEGORICAL OR CONTINUOUS
-
-	// metric provides the performance of this node on the sample
-	// data.  For a leaf node, it represents the irreducible
-	// performance on the data set that could not be split.  For a
-	// non-leaf node, it should be the max of the metrics of the
-	// left and right decendents.
-	metric float64
-
-	// In a leaf node, featureSelector is nil and the two partition
-	// pointers are nil.  In a non-leaf node, featureIndex is a
-	// valid function and both the left and right partition pointers
-	// are non-nil.
-	seed int32
-
-	// In a non-leaf node, value is the splitting value.  Values
-	// greater than or equal to the splitting value belong to the right
-	// subtree.  Others belong to the left subtree.
+	// In a non-leaf node, splitValue is the splitting value.
+	// Values greater than or equal to the splitting value belong
+	// to the right subtree.  Others belong to the left subtree.
 	splitValue float64
-
-	// In a leaf node outputValue is the assigned label.  In a non-leaf node,
-	// It's an estimate if you stop at that node.
-	outputValue float64
 }
 
-func NewTreeNode (metric, defaultOutput  float64) *treeNode {
+func NewTreeNode (statistics CVAccumulator) *treeNode {
 	return &treeNode{
 		featureType: CONTINUOUS,
 		seed: -1,
-		metric: metric,
-		outputValue: defaultOutput,
-		// initialization of splitValue is not very important as it is not used if featureIndex < 0
+		statistics: statistics,
+		// initialization of splitValue is not very important as it is not used if seed < 0
 		splitValue: math.MaxFloat64}
 }
 
@@ -262,9 +256,9 @@ func splitData (data []*Data, splitValue float64, seed int32, left[]*Data, right
 func (tree *treeNode) dump(w io.Writer, index, depth int) {
 	indent := 4*depth + 1
 	if tree.seed == -1 {
-		fmt.Fprintf (w, "%*c %2d - Leaf node - output: %g; metric: %g\n", indent, ' ', index, tree.outputValue, tree.metric)
+		fmt.Fprintf (w, "%*c %2d - Leaf node - output: %g; metric: %g\n", indent, ' ', index, tree.statistics.Estimate(), tree.statistics.Metric())
 	} else {
-		fmt.Fprintf (w, "%*c %2d - Split on feature ??? at value %g; metric: %g\n", indent, ' ', index, tree.splitValue, tree.metric)
+		fmt.Fprintf (w, "%*c %2d - Split on feature ??? at value %g; metric: %g\n", indent, ' ', index, tree.splitValue, tree.statistics.Metric())
 
 		fmt.Fprintf (w, "%*c %2d - Left branch (feature ??? < %g):\n", indent, ' ', index, tree.splitValue)
 		tree.left.dump(w, index+1, depth+1)
@@ -305,21 +299,22 @@ func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry in
 	}
 
 	var bestSplitInfo SplitInfo
+	bestMetric := tree.statistics.Metric()
 
 	for i:= 0; i<featuresToTry; i++ {
 //		candidateSeed := rand.Int31n(int32(len(data[0].continuousFeatures)))
 		candidateSeed := rand.Int31()
 		candidateSplitInfo := continuousFeatureSplit(data, candidateSeed, accumulatorFactory)
-//		fmt.Printf("candidateSplitInfo = %v\n", candidateSplitInfo.String())
+
 		if candidateSplitInfo.left.Count() >= minLeafSize && 
-		   candidateSplitInfo.right.Count() >= minLeafSize &&
-		   candidateSplitInfo.compositeSplitMetric < tree.metric {
+			candidateSplitInfo.right.Count() >= minLeafSize &&
+			candidateSplitInfo.compositeSplitMetric < bestMetric {
 			bestSplitInfo = candidateSplitInfo
-			tree.metric = candidateSplitInfo.compositeSplitMetric
 			tree.seed = candidateSeed
+			bestMetric = candidateSplitInfo.compositeSplitMetric
 		}
 	}
-
+	
 	if tree.seed != -1 {
 		tree.splitValue = bestSplitInfo.splitValue
 		
@@ -328,8 +323,8 @@ func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry in
 		
 		splitData(data, tree.splitValue, tree.seed, leftData, rightData)
 		
-		tree.left = NewTreeNode(bestSplitInfo.left.Metric(),bestSplitInfo.left.Estimate())
-		tree.right = NewTreeNode(bestSplitInfo.right.Metric(),bestSplitInfo.right.Estimate())
+		tree.left = NewTreeNode(bestSplitInfo.left)
+		tree.right = NewTreeNode(bestSplitInfo.right)
 
 		tree.left.grow(leftData, maxDepth-1, minLeafSize, featuresToTry, accumulatorFactory)
 		tree.right.grow(rightData, maxDepth-1, minLeafSize, featuresToTry, accumulatorFactory)
@@ -340,7 +335,7 @@ func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry in
 func (tree *treeNode) classify(featureSelector func(int32) float64) float64 {
 	// Leaf node?
 	if tree.seed == -1 {
-		return tree.outputValue
+		return tree.statistics.Estimate()
 	} else {
 		switch  {
 		case featureSelector(tree.seed) < tree.splitValue:

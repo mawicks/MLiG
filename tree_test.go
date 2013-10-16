@@ -99,11 +99,16 @@ func TestGrow (t *testing.T) {
 		&Data{continuousFeatures: []float64{4.0, 0.0}, output: 2.0,
 			featureSelector: func (s int32) float64 {return []float64{4.0,0.0}[s%2]}}}
 
-	treeNode := NewTreeNode (math.MaxFloat64,math.MaxFloat64)
+	factory := EntropyAccumulatorFactory(3)
+	accumulator := factory()
+	for _,d := range test {
+		accumulator.Add(d.output)
+	}
+	treeNode := NewTreeNode (accumulator)
 
 //	f := continuousFeatureEntropySplitter (3)
 
-	treeNode.grow(test, 10, 1, 128, EntropyAccumulatorFactory(3))
+	treeNode.grow(test, 10, 1, 128, factory)
 	for _,d := range test {
 		if d.output != treeNode.classify(d.featureSelector) {
 			t.Errorf ("%g classified as %g\n", d.output, treeNode.classify(d.featureSelector))
@@ -112,5 +117,3 @@ func TestGrow (t *testing.T) {
 	
 	treeNode.dump(os.Stdout, 0, 0)
 }
-
-
