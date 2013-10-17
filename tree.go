@@ -165,7 +165,7 @@ func (tree *Tree) Train(trainingSet[] *Data) {
 		tree.accumulatorFactory)
 }
 
-func (tree *Tree) Classify(featureSelector func(int32) float64) float64 {
+func (tree *Tree) Classify(featureSelector func(int32) float64) CVAccumulator {
 	return tree.root.classify(featureSelector)
 }
 
@@ -332,10 +332,10 @@ func (tree *treeNode) grow(data []*Data, maxDepth, minLeafSize, featuresToTry in
 }
 
 // Classify (or predict) the passed feature vector.
-func (tree *treeNode) classify(featureSelector func(int32) float64) float64 {
+func (tree *treeNode) classify(featureSelector func(int32) float64) CVAccumulator {
 	// Leaf node?
 	if tree.seed == -1 {
-		return tree.statistics.Estimate()
+		return tree.statistics
 	} else {
 		switch  {
 		case featureSelector(tree.seed) < tree.splitValue:

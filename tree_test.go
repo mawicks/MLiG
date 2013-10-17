@@ -110,7 +110,7 @@ func TestGrow (t *testing.T) {
 
 	treeNode.grow(test, 10, 1, 128, factory)
 	for _,d := range test {
-		if d.output != treeNode.classify(d.featureSelector) {
+		if d.output != treeNode.classify(d.featureSelector).Estimate() {
 			t.Errorf ("%g classified as %g\n", d.output, treeNode.classify(d.featureSelector))
 		}
 	}
