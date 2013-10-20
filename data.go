@@ -16,7 +16,7 @@ type Data struct {
 	outputCategories int // 0 means no output, 1 means continuous
 
 	featureSelector func (int32) float64
-	oobAccumulator ErrorAccumulator
+	oobAccumulator WeightedErrorAccumulator
 }
 
 func (d *Data) AppendFeatures(af []float64) {

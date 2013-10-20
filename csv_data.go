@@ -86,11 +86,11 @@ func CSVData(legend string, filename string, outputCategories, skip int) []*Data
 			}
 			
 		}
-		var errorAccumulator ErrorAccumulator
+		var errorAccumulator WeightedErrorAccumulator
 		if outputCategories == 1 {
-			errorAccumulator = &StatAccumulator{}
+			errorAccumulator = &WeightedStatAccumulator{}
 		} else if outputCategories > 1 {
-			errorAccumulator = NewEntropyAccumulator(outputCategories)
+			errorAccumulator = NewWeightedEntropyAccumulator(outputCategories)
 		}
 		
 		result = append(result, &Data {

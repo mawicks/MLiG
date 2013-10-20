@@ -34,7 +34,7 @@ func TrainBag (data[]*Data, classifier Classifier) {
 	testSet := data[trainSize:]
 	for _,d := range testSet {
 		prediction := classifier.Classify(d.featureSelector).Estimate()
-		d.oobAccumulator.Add (prediction)
+		d.oobAccumulator.Add (prediction, 1.0)
 		classifier.Add (d.output - prediction)
 	}
 }

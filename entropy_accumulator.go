@@ -97,3 +97,8 @@ func (ea *EntropyAccumulator) Dump(w io.Writer, indent int) {
 	}
 	fmt.Fprintf(w, "\n")
 }
+
+func (ea *EntropyAccumulator) FrequencyEstimate(value float64) float64 {
+	count := ea.counts[int(value)]
+	return float64(count + 1)/float64(ea.totalCount + len(ea.counts))
+}
